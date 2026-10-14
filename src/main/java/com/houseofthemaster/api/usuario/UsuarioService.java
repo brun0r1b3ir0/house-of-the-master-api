@@ -1,5 +1,6 @@
 package com.houseofthemaster.api.usuario;
 
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,5 +26,16 @@ public class UsuarioService {
         usuario.setSenhaHash(passwordEncoder.encode(senha));
 
         return usuarioRepository.save(usuario);
+    }
+    
+        public Usuario autenticar(String email, String senha) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+            .orElseThrow(() -> new BadCredentialsException("Email ou senha inválidos."));
+
+        if (!passwordEncoder.matches(senha, usuario.getSenhaHash())) {
+            throw new BadCredentialsException("Email ou senha inválidos.");
+        }
+
+        return usuario;
     }
 }
