@@ -39,6 +39,17 @@ public class CampanhaController {
         return ResponseEntity.ok(campanhaService.listarDoUsuario(usuarioId));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<?> detalhar(@PathVariable UUID id, Authentication authentication) {
+        try {
+            UUID usuarioId = UUID.fromString(authentication.getName());
+            return ResponseEntity.ok(campanhaService.detalhar(usuarioId, id));
+
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
     @PostMapping("/entrar")
     public ResponseEntity<?> entrar(@Valid @RequestBody EntrarRequest request,
                                     Authentication authentication) {

@@ -122,6 +122,32 @@ public class CampanhaService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public CampanhaDetalheResponse detalhar(UUID usuarioId, UUID campanhaId) {
+        Participacao participacao = participacaoRepository
+            .findByUsuarioIdAndCampanhaId(usuarioId, campanhaId)
+            .orElseThrow(() -> new NoSuchElementException("Campanha não encontrada."));
+
+        Campanha campanha = participacao.getCampanha();
+        long jogadores = participacaoRepository
+            .countByCampanhaIdAndPapel(campanha.getId(), Papel.JOGADOR);
+
+        String codigo = participacao.getPapel() == Papel.MESTRE
+            ? campanha.getCodigoConvite()
+            : null;
+
+        return new CampanhaDetalheResponse(
+            campanha.getId(),
+            campanha.getNome(),
+            campanha.getDescricao(),
+            campanha.getSistema(),
+            participacao.getPapel(),
+            jogadores,
+            campanha.getMaxJogadores(),
+            codigo
+        );
+    }    
+
     private String gerarCodigoUnico() {
         String codigo;
         do {
