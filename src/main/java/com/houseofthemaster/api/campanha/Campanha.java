@@ -29,11 +29,7 @@ public class Campanha {
 
     private Integer maxJogadores;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Privacidade privacidade;
-
-    @Column(unique = true)
+    @Column(nullable = false, unique = true, length = 12)
     private String codigoConvite;
 
     @OneToMany(mappedBy = "campanha")
