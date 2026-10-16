@@ -4,6 +4,7 @@ import com.houseofthemaster.api.ficha.FichaPersistenciaCasos;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -19,9 +20,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Roda as migrations do Flyway num Postgres 16 vazio e sobe o contexto com ddl-auto=validate:
  * se alguma entidade não bater com o esquema das migrations, o contexto nem sobe.
  * Também roda, no Postgres (jsonb), os mesmos casos de persistência da ficha usados no H2.
- * Sem Docker disponível o teste é pulado (não falha).
+ * Sem Docker disponível o teste é pulado com aviso, ou falha se CI=true (ver DockerDisponivelOuFalhaNoCi).
  */
-@Testcontainers(disabledWithoutDocker = true)
+@ExtendWith(DockerDisponivelOuFalhaNoCi.class)
+@Testcontainers
 @SpringBootTest(properties = {
     "spring.flyway.enabled=true",
     "spring.jpa.hibernate.ddl-auto=validate",
