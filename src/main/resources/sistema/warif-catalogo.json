@@ -1,0 +1,545 @@
+{
+  "sistema": "War If",
+  "versao": 1,
+  "pericias": [
+    {
+      "nome": "Armas de Fogo (Arcos)",
+      "categoria": "COMBATE",
+      "valorInicial": 15,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Armas de Fogo (Lança-Chamas)",
+      "categoria": "COMBATE",
+      "valorInicial": 10,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Armas de Fogo (Pistolas)",
+      "categoria": "COMBATE",
+      "valorInicial": 20,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Armas de Fogo (Submetralhadoras)",
+      "categoria": "COMBATE",
+      "valorInicial": 15,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Armas de Fogo (Armas Pesadas)",
+      "categoria": "COMBATE",
+      "valorInicial": 10,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Armas de Fogo (Metralhadoras)",
+      "categoria": "COMBATE",
+      "valorInicial": 10,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Armas de Fogo (Rifles/Espingardas)",
+      "categoria": "COMBATE",
+      "valorInicial": 25,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Lutar (Briga)",
+      "categoria": "COMBATE",
+      "valorInicial": 25,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Lutar (Chicote)",
+      "categoria": "COMBATE",
+      "valorInicial": 5,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Lutar (Garrote)",
+      "categoria": "COMBATE",
+      "valorInicial": 15,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Lutar (Machado)",
+      "categoria": "COMBATE",
+      "valorInicial": 15,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Lutar (Motosserra)",
+      "categoria": "COMBATE",
+      "valorInicial": 10,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Lutar (Espada)",
+      "categoria": "COMBATE",
+      "valorInicial": 20,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Lutar (Lança)",
+      "categoria": "COMBATE",
+      "valorInicial": 20,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Lutar (Mangual)",
+      "categoria": "COMBATE",
+      "valorInicial": 10,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Arremessar",
+      "categoria": "COMBATE",
+      "valorInicial": 20,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Esquivar",
+      "categoria": "COMBATE",
+      "valorInicial": "DES_METADE",
+      "exigePrecisao": true,
+      "observacao": "inicial = metade da DES digitada, acompanha o atributo ao vivo"
+    },
+    {
+      "nome": "Cavalgar",
+      "categoria": "FISICA",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Dirigir Automóveis",
+      "categoria": "FISICA",
+      "valorInicial": 20,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Escalar",
+      "categoria": "FISICA",
+      "valorInicial": 20,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Furtividade",
+      "categoria": "FISICA",
+      "valorInicial": 20,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Pilotar",
+      "categoria": "FISICA",
+      "valorInicial": 1,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Saltar",
+      "categoria": "FISICA",
+      "valorInicial": 20,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Chaveiro",
+      "categoria": "FISICA",
+      "valorInicial": 1,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Encontrar",
+      "categoria": "FISICA",
+      "valorInicial": 25,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Escutar",
+      "categoria": "FISICA",
+      "valorInicial": 20,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Nadar",
+      "categoria": "FISICA",
+      "valorInicial": 20,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Prestidigitação",
+      "categoria": "FISICA",
+      "valorInicial": 10,
+      "exigePrecisao": true,
+      "observacao": null
+    },
+    {
+      "nome": "Olfato",
+      "categoria": "FISICA",
+      "valorInicial": 50,
+      "exigePrecisao": false,
+      "observacao": "exclusiva do Lobisomem: toda ficha a recebe (o ganho não se perde ao trocar de raça) e o frontend só a mostra para Lobisomem; fora da lista original, valor das regras"
+    },
+    {
+      "nome": "Antropologia",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Arqueologia",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Arte/Ofício",
+      "categoria": "MENTAL",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Astronomia",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Avaliação",
+      "categoria": "MENTAL",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Biologia",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Botânica",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Ciência Forense",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Consertos Elétricos",
+      "categoria": "MENTAL",
+      "valorInicial": 10,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Consertos Mecânicos",
+      "categoria": "MENTAL",
+      "valorInicial": 10,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Contabilidade",
+      "categoria": "MENTAL",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Criptografia",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Direito",
+      "categoria": "MENTAL",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Disfarce",
+      "categoria": "MENTAL",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Eletrônica",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Farmácia",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Física",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Geologia",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "História",
+      "categoria": "MENTAL",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Língua Nativa (Inglês)",
+      "categoria": "MENTAL",
+      "valorInicial": "EDU",
+      "exigePrecisao": false,
+      "observacao": "inicial = EDU digitada, acompanha o atributo ao vivo"
+    },
+    {
+      "nome": "Matemática",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Medicina",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Meteorologia",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Mundo Natural",
+      "categoria": "MENTAL",
+      "valorInicial": 10,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Navegação",
+      "categoria": "MENTAL",
+      "valorInicial": 10,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Ocultismo",
+      "categoria": "MENTAL",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Operar Maquinário Pesado",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Primeiros Socorros",
+      "categoria": "MENTAL",
+      "valorInicial": 30,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Psicanálise",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Química",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Rastrear",
+      "categoria": "MENTAL",
+      "valorInicial": 10,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Sobrevivência",
+      "categoria": "MENTAL",
+      "valorInicial": 10,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Lidar com Animais",
+      "categoria": "MENTAL",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": "o +20 do Lobisomem vale para ela (nome oficial: Lidar com Animais)"
+    },
+    {
+      "nome": "Usar Bibliotecas",
+      "categoria": "MENTAL",
+      "valorInicial": 20,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Usar Computadores",
+      "categoria": "MENTAL",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Zoologia",
+      "categoria": "MENTAL",
+      "valorInicial": 1,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Charme",
+      "categoria": "INTERPESSOAL",
+      "valorInicial": 15,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Intimidação",
+      "categoria": "INTERPESSOAL",
+      "valorInicial": 15,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Lábia",
+      "categoria": "INTERPESSOAL",
+      "valorInicial": 5,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Persuasão",
+      "categoria": "INTERPESSOAL",
+      "valorInicial": 10,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Psicologia",
+      "categoria": "INTERPESSOAL",
+      "valorInicial": 10,
+      "exigePrecisao": false,
+      "observacao": null
+    },
+    {
+      "nome": "Primórdios",
+      "categoria": "DESCONHECIDA",
+      "valorInicial": 0,
+      "exigePrecisao": false,
+      "observacao": "sem categoria: nenhum modificador de categoria a afeta"
+    }
+  ],
+  "estagiosSanidade": [
+    {
+      "chave": "PLENITUDE",
+      "nome": "Plenitude",
+      "ordem": 1
+    },
+    {
+      "chave": "ESTADO_DE_APRECO",
+      "nome": "Estado de Apreço",
+      "ordem": 2
+    },
+    {
+      "chave": "MENTE_SA",
+      "nome": "Mente Sã",
+      "ordem": 3
+    },
+    {
+      "chave": "ESTRESSE_LEVE",
+      "nome": "Estresse Leve",
+      "ordem": 4
+    },
+    {
+      "chave": "ALERTA_VERMELHO",
+      "nome": "Alerta Vermelho",
+      "ordem": 5
+    },
+    {
+      "chave": "ESTADO_CRITICO",
+      "nome": "Estado Crítico",
+      "ordem": 6
+    },
+    {
+      "chave": "COLAPSO_MENTAL",
+      "nome": "Colapso Mental",
+      "ordem": 7
+    },
+    {
+      "chave": "INFERNO",
+      "nome": "Inferno",
+      "ordem": 8
+    }
+  ]
+}
