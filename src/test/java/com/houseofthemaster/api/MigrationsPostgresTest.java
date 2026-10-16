@@ -1,0 +1,47 @@
+package com.houseofthemaster.api;
+
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationInfo;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+
+import java.util.Arrays;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Roda as migrations do Flyway num Postgres 16 vazio e sobe o contexto com ddl-auto=validate:
+ * se alguma entidade não bater com o esquema das migrations, o contexto nem sobe.
+ * Sem Docker disponível o teste é pulado (não falha).
+ */
+@Testcontainers(disabledWithoutDocker = true)
+@SpringBootTest(properties = {
+    "spring.flyway.enabled=true",
+    "spring.jpa.hibernate.ddl-auto=validate",
+    "spring.datasource.driver-class-name=org.postgresql.Driver"
+})
+class MigrationsPostgresTest {
+
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16");
+
+    @Autowired
+    private Flyway flyway;
+
+    @Test
+    void migrationsAplicamEEsquemaPassaNoValidate() {
+        MigrationInfo[] aplicadas = flyway.info().applied();
+
+        assertThat(aplicadas).isNotEmpty();
+        assertThat(Arrays.stream(aplicadas).allMatch(m -> m.getState().isApplied() && !m.getState().isFailed()))
+            .isTrue();
+        assertThat(aplicadas[0].getVersion().getVersion()).isEqualTo("1");
+        assertThat(flyway.info().pending()).isEmpty();
+    }
+}
