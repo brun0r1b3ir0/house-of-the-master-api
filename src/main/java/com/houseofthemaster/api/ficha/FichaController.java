@@ -59,6 +59,24 @@ public class FichaController {
         }
     }
 
+    @PatchMapping("/{fichaId}")
+    public ResponseEntity<?> alterar(@PathVariable UUID campanhaId,
+                                     @PathVariable UUID fichaId,
+                                     @Valid @RequestBody PatchFichaRequest request,
+                                     Authentication authentication) {
+        try {
+            UUID usuarioId = UUID.fromString(authentication.getName());
+            return ResponseEntity.ok(fichaService.alterar(usuarioId, campanhaId, fichaId, request));
+
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/{fichaId}")
     public ResponseEntity<?> arquivar(@PathVariable UUID campanhaId,
                                       @PathVariable UUID fichaId,

@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -31,14 +32,17 @@ public class FichaService {
     private final FichaRepository fichaRepository;
     private final ParticipacaoRepository participacaoRepository;
     private final CatalogoSistema catalogoSistema;
+    private final FichaPatchAplicador patchAplicador;
     private final Map<String, Integer> ordemNoCatalogo = new HashMap<>();
 
     public FichaService(FichaRepository fichaRepository,
                         ParticipacaoRepository participacaoRepository,
-                        CatalogoSistema catalogoSistema) {
+                        CatalogoSistema catalogoSistema,
+                        FichaPatchAplicador patchAplicador) {
         this.fichaRepository = fichaRepository;
         this.participacaoRepository = participacaoRepository;
         this.catalogoSistema = catalogoSistema;
+        this.patchAplicador = patchAplicador;
 
         List<PericiaCatalogo> pericias = catalogoSistema.pericias();
         for (int i = 0; i < pericias.size(); i++) {
@@ -111,6 +115,26 @@ public class FichaService {
     public FichaResponse detalhar(UUID usuarioId, UUID campanhaId, UUID fichaId) {
         Participacao participacao = participacao(usuarioId, campanhaId);
         return paraResponse(fichaVisivel(participacao, campanhaId, fichaId));
+    }
+
+    /**
+     * Aplica as ops de forma atômica: se qualquer op for inválida (IllegalArgumentException = 400),
+     * nenhuma é aplicada. Sem controle de versão: a última escrita vence.
+     */
+    @Transactional
+    public FichaResponse alterar(UUID usuarioId, UUID campanhaId, UUID fichaId, PatchFichaRequest request) {
+        Participacao participacao = participacao(usuarioId, campanhaId);
+        Ficha ficha = fichaEditavel(participacao, campanhaId, fichaId);
+
+        List<FichaPatchAplicador.Alteracao> alteracoes = patchAplicador.validar(ficha, request.getOps());
+        List<FichaPatchAplicador.AlteracaoAplicada> aplicadas = patchAplicador.aplicar(ficha, alteracoes);
+
+        if (!aplicadas.isEmpty()) {
+            // Marca a ficha como alterada mesmo quando só uma perícia mudou (o @UpdateTimestamp gera o valor final).
+            ficha.setAtualizadaEm(Instant.now());
+            fichaRepository.flush();
+        }
+        return paraResponse(ficha);
     }
 
     @Transactional

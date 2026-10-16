@@ -45,6 +45,9 @@ class FichaCrudPermissoesTest extends FichaTestBase {
             {"tipo": "PJ", "nome": "Intruso"}
             """).andExpect(status().isNotFound());
         getFicha(outro, cid, fichaId).andExpect(status().isNotFound());
+        patchFicha(outro, cid, fichaId, """
+            {"ops": [{"campo": "nome", "valor": "Hackeado"}]}
+            """).andExpect(status().isNotFound());
         deleteFicha(outro, cid, fichaId).andExpect(status().isNotFound());
 
         getFicha(mesa.jogador1(), cid, fichaId)
@@ -212,6 +215,9 @@ class FichaCrudPermissoesTest extends FichaTestBase {
         String outraCampanha = JsonPath.read(criarCampanha(mesa.jogador1(), "Outra Mesa"), "$.id");
 
         getFicha(mesa.jogador1(), outraCampanha, ficha).andExpect(status().isNotFound());
+        patchFicha(mesa.jogador1(), outraCampanha, ficha, """
+            {"ops": [{"campo": "nome", "valor": "X"}]}
+            """).andExpect(status().isNotFound());
         deleteFicha(mesa.jogador1(), outraCampanha, ficha).andExpect(status().isNotFound());
 
         getFicha(mesa.jogador1(), mesa.campanhaId(), ficha)
@@ -230,6 +236,9 @@ class FichaCrudPermissoesTest extends FichaTestBase {
 
         getFicha(mesa.jogador1(), mesa.campanhaId(), ficha).andExpect(status().isNotFound());
         getFicha(mesa.mestre(), mesa.campanhaId(), ficha).andExpect(status().isNotFound());
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
+            {"ops": [{"campo": "nome", "valor": "X"}]}
+            """).andExpect(status().isNotFound());
         deleteFicha(mesa.jogador1(), mesa.campanhaId(), ficha).andExpect(status().isNotFound());
         listarFichas(mesa.jogador1(), mesa.campanhaId()).andExpect(jsonPath("$", hasSize(0)));
         listarFichas(mesa.mestre(), mesa.campanhaId()).andExpect(jsonPath("$", hasSize(0)));
