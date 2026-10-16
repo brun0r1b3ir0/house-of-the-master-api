@@ -1,5 +1,6 @@
 package com.houseofthemaster.api;
 
+import com.houseofthemaster.api.ficha.FichaPersistenciaCasos;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Roda as migrations do Flyway num Postgres 16 vazio e sobe o contexto com ddl-auto=validate:
  * se alguma entidade não bater com o esquema das migrations, o contexto nem sobe.
+ * Também roda, no Postgres (jsonb), os mesmos casos de persistência da ficha usados no H2.
  * Sem Docker disponível o teste é pulado (não falha).
  */
 @Testcontainers(disabledWithoutDocker = true)
@@ -25,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
     "spring.jpa.hibernate.ddl-auto=validate",
     "spring.datasource.driver-class-name=org.postgresql.Driver"
 })
-class MigrationsPostgresTest {
+class MigrationsPostgresTest extends FichaPersistenciaCasos {
 
     @Container
     @ServiceConnection
@@ -41,7 +43,8 @@ class MigrationsPostgresTest {
         assertThat(aplicadas).isNotEmpty();
         assertThat(Arrays.stream(aplicadas).allMatch(m -> m.getState().isApplied() && !m.getState().isFailed()))
             .isTrue();
-        assertThat(aplicadas[0].getVersion().getVersion()).isEqualTo("1");
+        assertThat(Arrays.stream(aplicadas).map(m -> m.getVersion().getVersion()))
+            .containsExactly("1", "2");
         assertThat(flyway.info().pending()).isEmpty();
     }
 }
