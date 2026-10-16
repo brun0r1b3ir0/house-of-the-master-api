@@ -13,6 +13,6 @@ import java.util.List;
 public class PatchFichaRequest {
 
     @NotEmpty(message = "Informe ao menos uma operação")
-    @Size(max = 100, message = "No máximo 100 operações por requisição")
+    @Size(max = FichaLimites.OPS_MAXIMAS, message = "No máximo {max} operações por requisição")
     private List<@Valid OpPatch> ops;
 }

@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 /**
  * Valida e aplica as operações do PATCH de ficha (lista permitida da Etapa 4).
  *
- * Atômico em duas fases: validar() confere TODAS as ops sem tocar na ficha (qualquer op inválida
+ * Tetos técnicos em FichaLimites. Atômico em duas fases: validar() confere TODAS as ops sem tocar na ficha (qualquer op inválida
  * lança IllegalArgumentException = 400); só depois aplicar() escreve. Faixas validadas aqui são só as
  * básicas: "atual <= máximo" é responsabilidade do frontend (o máximo depende do cálculo).
  *
@@ -25,9 +25,6 @@ import java.util.regex.Pattern;
 @Component
 public class FichaPatchAplicador {
 
-    static final int TAMANHO_MAXIMO_TEXTO = 255;
-    static final int SANGRIA_MAXIMA = 10;
-    static final int TAMANHO_MAXIMO_CHAVE_CONDICAO = 64;
     static final Pattern CHAVE_CONDICAO = Pattern.compile("^[a-z0-9]+(-[a-z0-9]+)*$");
 
     private static final String PREFIXO_PERICIAS = "pericias.";
@@ -91,7 +88,7 @@ public class FichaPatchAplicador {
             case "perdaPermanenteTam":
                 return new Alteracao(campo,
                     alvoEstado(FichaEstado::getPerdaPermanenteTam, (e, v) -> e.setPerdaPermanenteTam((Integer) v)),
-                    inteiro(valor, null));
+                    inteiro(valor, FichaLimites.VALOR_MAXIMO));
             default:
                 break;
         }
@@ -103,19 +100,19 @@ public class FichaPatchAplicador {
         return switch (grupo) {
             case "atributos" -> new Alteracao(campo,
                 alvoMapa(FichaEstado::getAtributos, FichaEstado::setAtributos, chaveConhecida(chave, FichaEstado.ATRIBUTOS)),
-                inteiro(valor, null));
+                inteiro(valor, FichaLimites.VALOR_MAXIMO));
             case "atuais" -> new Alteracao(campo,
                 alvoMapa(FichaEstado::getAtuais, FichaEstado::setAtuais, chaveConhecida(chave, FichaEstado.ATUAIS)),
-                inteiro(valor, null));
+                inteiro(valor, FichaLimites.VALOR_MAXIMO));
             case "contadores" -> new Alteracao(campo,
                 alvoMapa(FichaEstado::getContadores, FichaEstado::setContadores, chaveConhecida(chave, FichaEstado.CONTADORES)),
-                inteiro(valor, "sangria".equals(chave) ? SANGRIA_MAXIMA : null));
+                inteiro(valor, FichaLimites.maximoDoContador(chave)));
             case "flags" -> new Alteracao(campo,
                 alvoMapa(FichaEstado::getFlags, FichaEstado::setFlags, chaveConhecida(chave, FichaEstado.FLAGS)),
                 booleano(valor));
             case "condicoes" -> new Alteracao(campo,
                 alvoMapa(FichaEstado::getCondicoes, FichaEstado::setCondicoes, chaveDeCondicao(chave)),
-                inteiro(valor, null));
+                inteiro(valor, FichaLimites.VALOR_MAXIMO));
             case "pericias" -> validarPericia(ficha, campo, valor);
             default -> throw naoPermitido();
         };
@@ -136,7 +133,7 @@ public class FichaPatchAplicador {
 
         return new Alteracao(campo,
             alvo(f -> pericia.getGanho(), (f, v) -> pericia.setGanho((Integer) v)),
-            inteiro(valor, null));
+            inteiro(valor, FichaLimites.VALOR_MAXIMO));
     }
 
     // ---------- Fase 2: aplicar ----------
@@ -157,15 +154,12 @@ public class FichaPatchAplicador {
 
     // ---------- Valores ----------
 
-    private static Integer inteiro(JsonNode valor, Integer maximo) {
+    private static Integer inteiro(JsonNode valor, int maximo) {
         if (!valor.isIntegralNumber() || !valor.canConvertToInt()) {
             throw new IllegalArgumentException("deve ser um número inteiro.");
         }
         int numero = valor.intValue();
-        if (numero < 0) {
-            throw new IllegalArgumentException("deve ser maior ou igual a 0.");
-        }
-        if (maximo != null && numero > maximo) {
+        if (numero < 0 || numero > maximo) {
             throw new IllegalArgumentException("deve estar entre 0 e " + maximo + ".");
         }
         return numero;
@@ -189,8 +183,8 @@ public class FichaPatchAplicador {
         if (!aceitaNulo && texto.isBlank()) {
             throw new IllegalArgumentException("não pode ficar em branco.");
         }
-        if (texto.length() > TAMANHO_MAXIMO_TEXTO) {
-            throw new IllegalArgumentException("deve ter no máximo " + TAMANHO_MAXIMO_TEXTO + " caracteres.");
+        if (texto.length() > FichaLimites.TEXTO_MAXIMO) {
+            throw new IllegalArgumentException("deve ter no máximo " + FichaLimites.TEXTO_MAXIMO + " caracteres.");
         }
         return texto;
     }
@@ -220,9 +214,9 @@ public class FichaPatchAplicador {
     }
 
     private static String chaveDeCondicao(String chave) {
-        if (chave.length() > TAMANHO_MAXIMO_CHAVE_CONDICAO || !CHAVE_CONDICAO.matcher(chave).matches()) {
+        if (chave.length() > FichaLimites.CHAVE_CONDICAO_MAXIMA || !CHAVE_CONDICAO.matcher(chave).matches()) {
             throw new IllegalArgumentException("chave de condição inválida: use letras minúsculas, números e hífens"
-                + " (ex.: em-choque), com até " + TAMANHO_MAXIMO_CHAVE_CONDICAO + " caracteres.");
+                + " (ex.: em-choque), com até " + FichaLimites.CHAVE_CONDICAO_MAXIMA + " caracteres.");
         }
         return chave;
     }

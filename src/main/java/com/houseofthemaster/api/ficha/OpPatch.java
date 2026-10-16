@@ -1,6 +1,7 @@
 package com.houseofthemaster.api.ficha;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import tools.jackson.databind.JsonNode;
@@ -15,6 +16,7 @@ import tools.jackson.databind.JsonNode;
 public class OpPatch {
 
     @NotBlank(message = "Campo é obrigatório")
+    @Size(max = FichaLimites.CAMPO_OP_MAXIMO, message = "Campo deve ter no máximo {max} caracteres")
     private String campo;
 
     private JsonNode valor;

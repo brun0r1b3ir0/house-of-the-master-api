@@ -14,10 +14,10 @@ public class CriarFichaRequest {
     private TipoFicha tipo;
 
     @NotBlank(message = "Nome é obrigatório")
-    @Size(max = 255, message = "Nome deve ter no máximo 255 caracteres")
+    @Size(max = FichaLimites.TEXTO_MAXIMO, message = "Nome deve ter no máximo {max} caracteres")
     private String nome;
 
-    @Size(max = 255, message = "Ocupação deve ter no máximo 255 caracteres")
+    @Size(max = FichaLimites.TEXTO_MAXIMO, message = "Ocupação deve ter no máximo {max} caracteres")
     private String ocupacao;
 
     private Raca raca;
