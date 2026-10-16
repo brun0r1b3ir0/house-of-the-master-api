@@ -26,7 +26,12 @@ class FichaLimitesTest extends FichaTestBase {
                 FichaEstado.ATRIBUTOS.stream().map(c -> Arguments.of("atributos." + c, FichaLimites.VALOR_MAXIMO)),
                 FichaEstado.ATUAIS.stream().map(c -> Arguments.of("atuais." + c, FichaLimites.VALOR_MAXIMO)),
                 FichaEstado.CONTADORES.stream().map(c -> Arguments.of("contadores." + c, FichaLimites.maximoDoContador(c))),
+                FichaEstado.ABATES.stream().map(c -> Arguments.of("abates." + c, FichaLimites.VALOR_MAXIMO)),
+                FichaEstado.OVERRIDES.stream().map(c -> Arguments.of("overrides." + c, FichaLimites.VALOR_MAXIMO)),
+                FichaEstado.REGEN_OVERRIDES.stream()
+                    .map(c -> Arguments.of("regenOverrides." + c, FichaLimites.REGEN_OVERRIDE_MAXIMO)),
                 Stream.of(
+                    Arguments.of("alcateia.membros", FichaLimites.VALOR_MAXIMO),
                     Arguments.of("perdaPermanenteTam", FichaLimites.VALOR_MAXIMO),
                     Arguments.of("condicoes.em-choque", FichaLimites.VALOR_MAXIMO),
                     Arguments.of("pericias.Furtividade.ganho", FichaLimites.VALOR_MAXIMO),
@@ -57,6 +62,29 @@ class FichaLimitesTest extends FichaTestBase {
         org.assertj.core.api.Assertions.assertThat(FichaLimites.maximoDoContador("sangria")).isEqualTo(10);
         org.assertj.core.api.Assertions.assertThat(FichaLimites.maximoDoContador("fome"))
             .isEqualTo(FichaLimites.VALOR_MAXIMO);
+    }
+
+    /** Campos que aceitam só valores de uma lista: todos os valores da lista passam, outro qualquer dá 400. */
+    static Stream<Arguments> camposDeLista() {
+        return Stream.of(
+            Arguments.of("alcateia.papel", FichaLimites.PAPEIS_ALCATEIA),
+            Arguments.of("alcateia.linhagem", FichaLimites.LINHAGENS_ALCATEIA));
+    }
+
+    @ParameterizedTest(name = "[{index}] {0} aceita {1}")
+    @MethodSource("camposDeLista")
+    void campoDeListaAceitaSoOsValoresDaLista(String campo, java.util.List<String> permitidos) throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        for (String permitido : permitidos) {
+            patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, op(campo, "\"" + permitido + "\""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado." + campo).value(permitido));
+        }
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, op(campo, "\"outro\""))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(containsString(permitidos.toString())));
     }
 
     @ParameterizedTest(name = "[{index}] PATCH {0}")

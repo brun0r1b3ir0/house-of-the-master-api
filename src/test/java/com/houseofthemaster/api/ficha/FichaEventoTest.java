@@ -264,6 +264,81 @@ class FichaEventoTest extends FichaTestBase {
             .andExpect(jsonPath("$[0].autorNome").value("Mestre"));
     }
 
+    // ---------- Exceções (overrides) e alcateia ----------
+
+    @Test
+    void removerExcecaoGeraEventoComNovoNull() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patch(mesa.jogador1(), mesa, ficha, "overrides.PV", "15").andExpect(status().isOk());
+        relogio.avancar(Duration.ofSeconds(60));
+        patch(mesa.jogador1(), mesa, ficha, "overrides.PV", "null").andExpect(status().isOk());
+
+        eventos(mesa.jogador1(), mesa, ficha, "")
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].campo").value("overrides.PV"))
+            .andExpect(jsonPath("$[0].anterior").value(15))
+            .andExpect(jsonPath("$[0].novo").doesNotExist())
+            .andExpect(jsonPath("$[1].anterior").doesNotExist())
+            .andExpect(jsonPath("$[1].novo").value(15));
+    }
+
+    @Test
+    void removerExcecaoQueNaoExisteNaoGeraEvento() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+        relogio.avancar(Duration.ofSeconds(10));
+
+        patch(mesa.jogador1(), mesa, ficha, "regenOverrides.PE", "null").andExpect(status().isOk());
+
+        eventos(mesa.jogador1(), mesa, ficha, "").andExpect(jsonPath("$", hasSize(0)));
+        getFicha(mesa.jogador1(), mesa.campanhaId(), ficha)
+            .andExpect(jsonPath("$.atualizadaEm").value("2026-10-16T12:00:00Z"));
+    }
+
+    @Test
+    void criarERemoverExcecaoDentroDaJanelaApagaOEvento() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patch(mesa.jogador1(), mesa, ficha, "overrides.MOV", "8");
+        relogio.avancar(Duration.ofSeconds(5));
+        patch(mesa.jogador1(), mesa, ficha, "overrides.MOV", "9");
+
+        eventos(mesa.jogador1(), mesa, ficha, "")
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].anterior").doesNotExist())
+            .andExpect(jsonPath("$[0].novo").value(9));
+
+        relogio.avancar(Duration.ofSeconds(5));
+        patch(mesa.jogador1(), mesa, ficha, "overrides.MOV", "null");
+
+        eventos(mesa.jogador1(), mesa, ficha, "").andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void camposDaAlcateiaEntramNoLog() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patchOps(mesa.jogador1(), mesa, ficha, """
+            {"campo": "alcateia.ativa", "valor": true}, {"campo": "alcateia.papel", "valor": "alfa"},
+            {"campo": "alcateia.linhagem", "valor": "normal"}, {"campo": "abates.vampiros", "valor": 2}
+            """).andExpect(status().isOk());
+
+        // linhagem já era "normal": não gera evento
+        eventos(mesa.jogador1(), mesa, ficha, "")
+            .andExpect(jsonPath("$", hasSize(3)))
+            .andExpect(jsonPath("$[0].campo").value("abates.vampiros"))
+            .andExpect(jsonPath("$[1].campo").value("alcateia.ativa"))
+            .andExpect(jsonPath("$[1].anterior").value(false))
+            .andExpect(jsonPath("$[1].novo").value(true))
+            .andExpect(jsonPath("$[2].campo").value("alcateia.papel"))
+            .andExpect(jsonPath("$[2].anterior").value("membro"))
+            .andExpect(jsonPath("$[2].novo").value("alfa"));
+    }
+
     // ---------- Atomicidade ----------
 
     @Test

@@ -20,7 +20,8 @@ import java.util.regex.Pattern;
  * lança IllegalArgumentException = 400); só depois aplicar() escreve. Faixas validadas aqui são só as
  * básicas: "atual <= máximo" é responsabilidade do frontend (o máximo depende do cálculo).
  *
- * Fora da lista nesta fase (400): valorInicial, ganhoTreino, alcateia, abates, overrides, regenOverrides.
+ * Fora da lista (400): valorInicial, ganhoTreino e qualquer campo não listado em MODELO-FICHA.md.
+ * Em overrides e regenOverrides, valor null REMOVE a exceção (apaga a chave).
  */
 @Component
 public class FichaPatchAplicador {
@@ -113,7 +114,37 @@ public class FichaPatchAplicador {
             case "condicoes" -> new Alteracao(campo,
                 alvoMapa(FichaEstado::getCondicoes, FichaEstado::setCondicoes, chaveDeCondicao(chave)),
                 inteiro(valor, FichaLimites.VALOR_MAXIMO));
+            case "abates" -> new Alteracao(campo,
+                alvoMapa(FichaEstado::getAbates, FichaEstado::setAbates, chaveConhecida(chave, FichaEstado.ABATES)),
+                inteiro(valor, FichaLimites.VALOR_MAXIMO));
+            case "overrides" -> new Alteracao(campo,
+                alvoMapaRemovivel(FichaEstado::getOverrides, FichaEstado::setOverrides,
+                    chaveConhecida(chave, FichaEstado.OVERRIDES)),
+                inteiroOuNulo(valor, FichaLimites.VALOR_MAXIMO));
+            case "regenOverrides" -> new Alteracao(campo,
+                alvoMapaRemovivel(FichaEstado::getRegenOverrides, FichaEstado::setRegenOverrides,
+                    chaveConhecida(chave, FichaEstado.REGEN_OVERRIDES)),
+                inteiroOuNulo(valor, FichaLimites.REGEN_OVERRIDE_MAXIMO));
+            case "alcateia" -> validarAlcateia(campo, chave, valor);
             case "pericias" -> validarPericia(ficha, campo, valor);
+            default -> throw naoPermitido();
+        };
+    }
+
+    private static Alteracao validarAlcateia(String campo, String chave, JsonNode valor) {
+        return switch (chave) {
+            case "ativa" -> new Alteracao(campo,
+                alvoAlcateia(FichaEstado.Alcateia::isAtiva, (a, v) -> a.setAtiva((Boolean) v)),
+                booleano(valor));
+            case "membros" -> new Alteracao(campo,
+                alvoAlcateia(FichaEstado.Alcateia::getMembros, (a, v) -> a.setMembros((Integer) v)),
+                inteiro(valor, FichaLimites.VALOR_MAXIMO));
+            case "papel" -> new Alteracao(campo,
+                alvoAlcateia(FichaEstado.Alcateia::getPapel, (a, v) -> a.setPapel((String) v)),
+                opcao(valor, FichaLimites.PAPEIS_ALCATEIA));
+            case "linhagem" -> new Alteracao(campo,
+                alvoAlcateia(FichaEstado.Alcateia::getLinhagem, (a, v) -> a.setLinhagem((String) v)),
+                opcao(valor, FichaLimites.LINHAGENS_ALCATEIA));
             default -> throw naoPermitido();
         };
     }
@@ -176,6 +207,25 @@ public class FichaPatchAplicador {
             throw new IllegalArgumentException("deve estar entre 0 e " + maximo + ".");
         }
         return numero;
+    }
+
+    /** Inteiro na faixa, ou null (usado para remover uma exceção). */
+    private static Integer inteiroOuNulo(JsonNode valor, int maximo) {
+        if (valor.isNull()) {
+            return null;
+        }
+        try {
+            return inteiro(valor, maximo);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(e.getMessage() + " Use null para remover a exceção.");
+        }
+    }
+
+    private static String opcao(JsonNode valor, List<String> permitidas) {
+        if (!valor.isString() || !permitidas.contains(valor.stringValue())) {
+            throw new IllegalArgumentException("deve ser um de " + permitidas + ".");
+        }
+        return valor.stringValue();
     }
 
     private static Boolean booleano(JsonNode valor) {
@@ -269,6 +319,39 @@ public class FichaPatchAplicador {
                     definirMapa.accept(e, new LinkedHashMap<>());
                 }
                 mapa.apply(e).put(chave, (T) v);
+            });
+    }
+
+    /** Como alvoMapa, mas escrever null apaga a chave (remove a exceção) em vez de gravar null. */
+    private static Alvo alvoMapaRemovivel(Function<FichaEstado, Map<String, Object>> mapa,
+                                          BiConsumer<FichaEstado, Map<String, Object>> definirMapa,
+                                          String chave) {
+        return alvoEstado(
+            e -> mapa.apply(e) == null ? null : mapa.apply(e).get(chave),
+            (e, v) -> {
+                if (v == null) {
+                    if (mapa.apply(e) != null) {
+                        mapa.apply(e).remove(chave);
+                    }
+                    return;
+                }
+                if (mapa.apply(e) == null) {
+                    definirMapa.accept(e, new LinkedHashMap<>());
+                }
+                mapa.apply(e).put(chave, v);
+            });
+    }
+
+    /** Campo da alcateia; se a ficha não tiver alcateia, ela é criada com os valores iniciais. */
+    private static Alvo alvoAlcateia(Function<FichaEstado.Alcateia, Object> ler,
+                                     BiConsumer<FichaEstado.Alcateia, Object> escrever) {
+        return alvoEstado(
+            e -> e.getAlcateia() == null ? null : ler.apply(e.getAlcateia()),
+            (e, v) -> {
+                if (e.getAlcateia() == null) {
+                    e.setAlcateia(FichaDefaults.alcateiaInicial());
+                }
+                escrever.accept(e.getAlcateia(), v);
             });
     }
 

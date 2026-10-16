@@ -128,11 +128,14 @@ class FichaPatchTest extends FichaTestBase {
         pericias.Furtividade.ganhoTreino   | 5
         pericias.Furtividade               | 5
         pericias..ganho                    | 5
-        alcateia.ativa                     | true
+        alcateia.lider                     | true
         alcateia                           | 1
-        abates.vampiros                    | 1
+        abates.lobisomens                  | 1
         overrides.FOR                      | 1
-        regenOverrides.PV                  | 1
+        regenOverrides.SAN                 | 1
+        regenOverrides                     | 1
+        overrides.corpo                    | 1
+        overrides                          | 1
         atributos.XYZ                      | 50
         atributos                          | 50
         atuais.PVMAX                       | 10
@@ -171,6 +174,25 @@ class FichaPatchTest extends FichaTestBase {
         condicoes.                         | 1
         condicoes.em-choque                | -1
         condicoes.em-choque                | true
+        # alcateia, abates, overrides e regenOverrides: tipos e faixas
+        alcateia.ativa                     | 1
+        alcateia.ativa                     | null
+        alcateia.membros                   | -1
+        alcateia.membros                   | "3"
+        alcateia.papel                     | "lider"
+        alcateia.papel                     | "Alfa"
+        alcateia.papel                     | null
+        alcateia.linhagem                  | "Verdadeira"
+        alcateia.linhagem                  | 1
+        abates.outros                      | -1
+        abates.outros                      | null
+        overrides.PV                       | -1
+        overrides.PV                       | "15"
+        overrides.Corpo                    | 1.5
+        overrides.MOV                      | true
+        regenOverrides.PE                  | 100
+        regenOverrides.PM                  | -1
+        regenOverrides.PV                  | "2"
         # perícia inexistente
         pericias.Atletismo.ganho           | 5
         pericias.Furtividade.ganho         | -1
@@ -236,6 +258,131 @@ class FichaPatchTest extends FichaTestBase {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.estado.atuais.PV").value(999))
             .andExpect(jsonPath("$.raca").doesNotExist());
+    }
+
+    // ---------- Alcateia, abates, overrides e regenOverrides ----------
+
+    @Test
+    void jogadorEditaAlcateiaAbatesEExcecoes() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
+                {"ops": [
+                  {"campo": "alcateia.ativa", "valor": true},
+                  {"campo": "alcateia.membros", "valor": 4},
+                  {"campo": "alcateia.papel", "valor": "alfa-secundario"},
+                  {"campo": "alcateia.linhagem", "valor": "verdadeira"},
+                  {"campo": "abates.vampiros", "valor": 3},
+                  {"campo": "abates.outros", "valor": 9999},
+                  {"campo": "overrides.PV", "valor": 15},
+                  {"campo": "overrides.Corpo", "valor": 2},
+                  {"campo": "overrides.Conhecimento", "valor": 0},
+                  {"campo": "regenOverrides.PE", "valor": 99}
+                ]}
+                """)
+            .andExpect(status().isOk());
+
+        getFicha(mesa.jogador1(), mesa.campanhaId(), ficha)
+            .andExpect(jsonPath("$.estado.alcateia.ativa").value(true))
+            .andExpect(jsonPath("$.estado.alcateia.membros").value(4))
+            .andExpect(jsonPath("$.estado.alcateia.papel").value("alfa-secundario"))
+            .andExpect(jsonPath("$.estado.alcateia.linhagem").value("verdadeira"))
+            .andExpect(jsonPath("$.estado.abates.vampiros").value(3))
+            .andExpect(jsonPath("$.estado.abates.outros").value(9999))
+            .andExpect(jsonPath("$.estado.overrides.PV").value(15))
+            .andExpect(jsonPath("$.estado.overrides.Corpo").value(2))
+            .andExpect(jsonPath("$.estado.overrides.Conhecimento").value(0))
+            .andExpect(jsonPath("$.estado.overrides.PE").doesNotExist())
+            .andExpect(jsonPath("$.estado.regenOverrides.PE").value(99));
+    }
+
+    @Test
+    void nullRemoveAExcecaoEmVezDeGravarNull() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
+                {"ops": [
+                  {"campo": "overrides.PV", "valor": 15},
+                  {"campo": "overrides.MOV", "valor": 8},
+                  {"campo": "regenOverrides.PM", "valor": 5}
+                ]}
+                """)
+            .andExpect(status().isOk());
+
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
+                {"ops": [
+                  {"campo": "overrides.PV", "valor": null},
+                  {"campo": "regenOverrides.PM", "valor": null}
+                ]}
+                """)
+            .andExpect(status().isOk());
+
+        // a chave some do mapa (não fica "PV": null); as outras exceções ficam
+        getFicha(mesa.jogador1(), mesa.campanhaId(), ficha)
+            .andExpect(jsonPath("$.estado.overrides.length()").value(1))
+            .andExpect(jsonPath("$.estado.overrides.MOV").value(8))
+            .andExpect(jsonPath("$.estado.regenOverrides.length()").value(0));
+    }
+
+    @Test
+    void nullEmExcecaoQueNaoExisteNaoMudaNada() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
+                {"ops": [{"campo": "overrides.PE", "valor": null}, {"campo": "regenOverrides.PV", "valor": null}]}
+                """)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.estado.overrides.length()").value(0))
+            .andExpect(jsonPath("$.estado.regenOverrides.length()").value(0));
+    }
+
+    @Test
+    void opInvalidaEntreCamposNovosNaoAplicaNenhuma() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
+                {"ops": [
+                  {"campo": "alcateia.ativa", "valor": true},
+                  {"campo": "overrides.PV", "valor": 15},
+                  {"campo": "regenOverrides.PV", "valor": 100},
+                  {"campo": "abates.vampiros", "valor": 2}
+                ]}
+                """)
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(containsString("ops[2]")));
+
+        getFicha(mesa.jogador1(), mesa.campanhaId(), ficha)
+            .andExpect(jsonPath("$.estado.alcateia.ativa").value(false))
+            .andExpect(jsonPath("$.estado.overrides.length()").value(0))
+            .andExpect(jsonPath("$.estado.regenOverrides.length()").value(0))
+            .andExpect(jsonPath("$.estado.abates.vampiros").value(0));
+    }
+
+    @Test
+    void permissoesValemParaOsCamposNovos() throws Exception {
+        Mesa mesa = montarMesa();
+        String pj = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+        String npc = criarFicha(mesa.mestre(), mesa.campanhaId(), TipoFicha.NPC, "Conde");
+        String overrideInvalido = """
+            {"ops": [{"campo": "overrides.PV", "valor": -1}]}
+            """;
+
+        // ordem: participação (404), permissão (403), depois validação (400)
+        patchFicha(registrarELogar("Outro", "outro@email.com"), mesa.campanhaId(), pj, overrideInvalido)
+            .andExpect(status().isNotFound());
+        patchFicha(mesa.jogador2(), mesa.campanhaId(), pj, overrideInvalido).andExpect(status().isNotFound());
+        patchFicha(mesa.mestre(), mesa.campanhaId(), pj, overrideInvalido).andExpect(status().isForbidden());
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), pj, overrideInvalido).andExpect(status().isBadRequest());
+
+        patchFicha(mesa.mestre(), mesa.campanhaId(), npc, """
+                {"ops": [{"campo": "abates.vampiros", "valor": 7}, {"campo": "alcateia.papel", "valor": "alfa"}]}
+                """)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.estado.abates.vampiros").value(7))
+            .andExpect(jsonPath("$.estado.alcateia.papel").value("alfa"));
     }
 
     // ---------- Atomicidade ----------
