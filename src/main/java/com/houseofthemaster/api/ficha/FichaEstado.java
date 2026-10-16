@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -19,6 +20,13 @@ import java.util.Map;
 @EqualsAndHashCode
 @ToString
 public class FichaEstado {
+
+    // Chaves conhecidas dos mapas do estado (usadas pelos valores iniciais e pela validação do PATCH).
+    public static final List<String> ATRIBUTOS = List.of("FOR", "CON", "TAM", "DES", "APA", "INT", "POD", "EDU");
+    public static final List<String> ATUAIS = List.of("PV", "PE", "PM", "SAN", "SRT");
+    public static final List<String> CONTADORES = List.of("exaustao", "fome", "sede", "debilitantes", "frio", "sangria");
+    public static final List<String> FLAGS = List.of("verbena", "colapsoMagico");
+    public static final List<String> ABATES = List.of("vampiros", "outros");
 
     /** FOR, CON, TAM, DES, APA, INT, POD, EDU. */
     private Map<String, Integer> atributos;
