@@ -138,18 +138,31 @@ public class FichaPatchAplicador {
 
     // ---------- Fase 2: aplicar ----------
 
-    /** Aplica as alterações já validadas e devolve só as que mudaram algum valor. */
+    /**
+     * Aplica as alterações já validadas, em ordem, e devolve o saldo por campo: do valor original ao
+     * final. Ops repetidas no mesmo campo viram uma alteração só; campo que termina igual ao original
+     * não aparece (nem gera evento, nem avança atualizadaEm).
+     */
     public List<AlteracaoAplicada> aplicar(Ficha ficha, List<Alteracao> alteracoes) {
-        List<AlteracaoAplicada> aplicadas = new ArrayList<>();
+        Map<String, Object> originais = new LinkedHashMap<>();
+        Map<String, Object> finais = new LinkedHashMap<>();
         for (Alteracao alteracao : alteracoes) {
-            Object anterior = alteracao.alvo().ler(ficha);
-            if (Objects.equals(anterior, alteracao.novo())) {
-                continue;
+            Object atual = alteracao.alvo().ler(ficha);
+            originais.putIfAbsent(alteracao.campo(), atual);
+            if (!Objects.equals(atual, alteracao.novo())) {
+                alteracao.alvo().escrever(ficha, alteracao.novo());
             }
-            alteracao.alvo().escrever(ficha, alteracao.novo());
-            aplicadas.add(new AlteracaoAplicada(alteracao.campo(), anterior, alteracao.novo()));
+            finais.put(alteracao.campo(), alteracao.novo());
         }
-        return aplicadas;
+
+        List<AlteracaoAplicada> saldo = new ArrayList<>();
+        originais.forEach((campo, original) -> {
+            Object fim = finais.get(campo);
+            if (!Objects.equals(original, fim)) {
+                saldo.add(new AlteracaoAplicada(campo, original, fim));
+            }
+        });
+        return saldo;
     }
 
     // ---------- Valores ----------

@@ -5,9 +5,7 @@ import com.houseofthemaster.api.usuario.Usuario;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
@@ -53,11 +51,10 @@ public class Ficha {
     @Column(nullable = false)
     private boolean arquivada;
 
-    @CreationTimestamp
+    /** Preenchidos pelo FichaService com o Clock da aplicação (os testes controlam o tempo). */
     @Column(nullable = false, updatable = false)
     private Instant criadaEm;
 
-    @UpdateTimestamp
     @Column(nullable = false)
     private Instant atualizadaEm;
 

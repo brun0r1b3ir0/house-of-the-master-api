@@ -4,6 +4,7 @@ import com.houseofthemaster.api.campanha.Campanha;
 import com.houseofthemaster.api.usuario.Usuario;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.Session;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.type.format.jackson.Jackson3JsonFormatMapper;
 import org.junit.jupiter.api.Test;
@@ -126,11 +127,13 @@ public abstract class FichaPersistenciaCasos {
         em.clear();
 
         Ficha lida = em.find(Ficha.class, ficha.getId());
-        Instant atualizadaEm = lida.getAtualizadaEm();
-        em.flush(); // se o estado JSON parecesse "sujo", o @UpdateTimestamp mudaria aqui
-        em.clear();
+        lida.getPericias().size();
 
-        assertThat(em.find(Ficha.class, ficha.getId()).getAtualizadaEm()).isEqualTo(atualizadaEm);
+        // se o estado JSON parecesse "sujo" após a leitura, o Hibernate faria um UPDATE no próximo flush
+        assertThat(em.unwrap(Session.class).isDirty()).isFalse();
+
+        lida.getEstado().getAtuais().put("PV", 3);
+        assertThat(em.unwrap(Session.class).isDirty()).isTrue();
     }
 
     @Test
@@ -194,6 +197,8 @@ public abstract class FichaPersistenciaCasos {
         ficha.setOcupacao("Detetive");
         ficha.setRaca(Raca.VAMPIRO);
         ficha.setEstado(estado);
+        ficha.setCriadaEm(Instant.parse("2026-10-16T12:00:00.123456Z"));
+        ficha.setAtualizadaEm(Instant.parse("2026-10-16T12:05:00.654321Z"));
         return ficha;
     }
 

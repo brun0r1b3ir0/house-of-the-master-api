@@ -93,11 +93,11 @@ A coluna "Mágico" **não é guardada**: a perícia é mágica quando a raça do
 | id | UUID | |
 | fichaId | FK | índice (fichaId, em desc) |
 | autorId | FK Usuario | |
-| campo | String | caminho, ex.: `atuais.PV`, `pericias.Furtividade`, `contadores.fome` |
+| campo | String | caminho completo da op do PATCH, ex.: `atuais.PV`, `pericias.Furtividade.ganho`, `contadores.fome` |
 | anterior / novo | JSON | |
 | em | timestamp | |
 
-**Anti-flood (o Mestre não é inundado):** se o mesmo autor altera o mesmo campo em menos de ~30 s, o backend atualiza o último evento (mantém `anterior` do primeiro, troca `novo` e `em`) em vez de criar outro. Ex.: PV 10→8→7→6 vira uma linha "PV 10 → 6". O Mestre consulta o log quando quiser; não há push por padrão.
+**Anti-flood (o Mestre não é inundado):** se o último evento do mesmo campo da ficha é do mesmo autor e tem menos de 30 s (`hotm.ficha.log.janela-juncao-segundos`), o backend atualiza esse evento (mantém `anterior` do primeiro, troca `novo` e `em`) em vez de criar outro. Ex.: PV 10→8→7→6 vira uma linha "PV 10 → 6". Se a junção voltar ao valor original, o evento é apagado. Só gera evento o campo que de fato mudou; ops repetidas no mesmo campo, no mesmo PATCH, viram um evento só. O Mestre consulta o log quando quiser; não há push por padrão.
 
 ### 2.5 Catálogos (do sistema War If, versionados no repositório)
 
@@ -183,7 +183,7 @@ Padrão já usado no projeto: quem não deve saber que o recurso existe recebe 4
 | GET | `/campanhas/{cid}/fichas/{fid}` | ficha completa (estado + perícias) |
 | PATCH | `/campanhas/{cid}/fichas/{fid}` | altera campos, ver abaixo |
 | DELETE | `/campanhas/{cid}/fichas/{fid}` | arquiva |
-| GET | `/campanhas/{cid}/fichas/{fid}/log?antes=...` | log paginado |
+| GET | `/campanhas/{cid}/fichas/{fid}/eventos?antes=...&limite=...` | log paginado, mais recentes primeiro (`antes` = cursor ISO-8601; `limite` padrão 50, máximo 200) |
 | GET | `/campanhas/{cid}/sistema` | catálogos (perícias, condições novas) |
 
 PATCH recebe uma lista de operações, cada uma com **campo da lista permitida** + valor:

@@ -9,7 +9,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -33,16 +35,22 @@ public class FichaService {
     private final ParticipacaoRepository participacaoRepository;
     private final CatalogoSistema catalogoSistema;
     private final FichaPatchAplicador patchAplicador;
+    private final FichaEventoService fichaEventoService;
+    private final Clock clock;
     private final Map<String, Integer> ordemNoCatalogo = new HashMap<>();
 
     public FichaService(FichaRepository fichaRepository,
                         ParticipacaoRepository participacaoRepository,
                         CatalogoSistema catalogoSistema,
-                        FichaPatchAplicador patchAplicador) {
+                        FichaPatchAplicador patchAplicador,
+                        FichaEventoService fichaEventoService,
+                        Clock clock) {
         this.fichaRepository = fichaRepository;
         this.participacaoRepository = participacaoRepository;
         this.catalogoSistema = catalogoSistema;
         this.patchAplicador = patchAplicador;
+        this.fichaEventoService = fichaEventoService;
+        this.clock = clock;
 
         List<PericiaCatalogo> pericias = catalogoSistema.pericias();
         for (int i = 0; i < pericias.size(); i++) {
@@ -94,6 +102,9 @@ public class FichaService {
         ficha.setOcupacao(request.getOcupacao());
         ficha.setRaca(request.getRaca());
         ficha.setEstado(FichaDefaults.estadoInicial());
+        Instant agora = agora();
+        ficha.setCriadaEm(agora);
+        ficha.setAtualizadaEm(agora);
 
         // Toda ficha recebe todas as perícias do catálogo, inclusive as exclusivas de raça (Olfato):
         // o frontend esconde as que não se aplicam e o ganho não se perde ao trocar de raça.
@@ -107,8 +118,7 @@ public class FichaService {
             ficha.adicionarPericia(pericia);
         }
 
-        // flush para o banco gerar criadaEm/atualizadaEm antes de montar a resposta
-        return paraResponse(fichaRepository.saveAndFlush(ficha));
+        return paraResponse(fichaRepository.save(ficha));
     }
 
     @Transactional(readOnly = true)
@@ -119,7 +129,8 @@ public class FichaService {
 
     /**
      * Aplica as ops de forma atômica: se qualquer op for inválida (IllegalArgumentException = 400),
-     * nenhuma é aplicada. Sem controle de versão: a última escrita vence.
+     * nenhuma é aplicada e nenhum evento é gravado. Cada campo que de fato mudou gera (ou junta) um
+     * evento no log. Sem controle de versão: a última escrita vence.
      */
     @Transactional
     public FichaResponse alterar(UUID usuarioId, UUID campanhaId, UUID fichaId, PatchFichaRequest request) {
@@ -127,12 +138,12 @@ public class FichaService {
         Ficha ficha = fichaEditavel(participacao, campanhaId, fichaId);
 
         List<FichaPatchAplicador.Alteracao> alteracoes = patchAplicador.validar(ficha, request.getOps());
-        List<FichaPatchAplicador.AlteracaoAplicada> aplicadas = patchAplicador.aplicar(ficha, alteracoes);
+        List<FichaPatchAplicador.AlteracaoAplicada> mudancas = patchAplicador.aplicar(ficha, alteracoes);
 
-        if (!aplicadas.isEmpty()) {
-            // Marca a ficha como alterada mesmo quando só uma perícia mudou (o @UpdateTimestamp gera o valor final).
-            ficha.setAtualizadaEm(Instant.now());
-            fichaRepository.flush();
+        if (!mudancas.isEmpty()) {
+            Instant agora = agora();
+            ficha.setAtualizadaEm(agora);
+            fichaEventoService.registrar(ficha, participacao.getUsuario(), mudancas, agora);
         }
         return paraResponse(ficha);
     }
@@ -142,6 +153,21 @@ public class FichaService {
         Participacao participacao = participacao(usuarioId, campanhaId);
         Ficha ficha = fichaEditavel(participacao, campanhaId, fichaId);
         ficha.setArquivada(true);
+        ficha.setAtualizadaEm(agora());
+    }
+
+    /** Log da ficha: visível a quem pode ver a ficha (dono da PJ e Mestre). */
+    @Transactional(readOnly = true)
+    public List<FichaEventoResponse> listarEventos(UUID usuarioId, UUID campanhaId, UUID fichaId,
+                                                   Instant antes, Integer limite) {
+        Participacao participacao = participacao(usuarioId, campanhaId);
+        Ficha ficha = fichaVisivel(participacao, campanhaId, fichaId);
+        return fichaEventoService.listar(ficha.getId(), antes, limite);
+    }
+
+    /** Instante atual na precisão do banco (microssegundos), para o valor em memória bater com o gravado. */
+    private Instant agora() {
+        return Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
     }
 
     // ---------- Acesso ----------

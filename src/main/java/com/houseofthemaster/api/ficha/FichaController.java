@@ -7,6 +7,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -72,6 +73,23 @@ public class FichaController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (AccessDeniedException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{fichaId}/eventos")
+    public ResponseEntity<?> eventos(@PathVariable UUID campanhaId,
+                                     @PathVariable UUID fichaId,
+                                     @RequestParam(required = false) Instant antes,
+                                     @RequestParam(required = false) Integer limite,
+                                     Authentication authentication) {
+        try {
+            UUID usuarioId = UUID.fromString(authentication.getName());
+            return ResponseEntity.ok(fichaService.listarEventos(usuarioId, campanhaId, fichaId, antes, limite));
+
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
