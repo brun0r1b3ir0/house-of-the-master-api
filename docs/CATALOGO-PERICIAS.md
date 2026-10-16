@@ -42,7 +42,7 @@
 | Escutar | Física | 20 |  |  |
 | Nadar | Física | 20 |  |  |
 | Prestidigitação | Física | 10 | sim |  |
-| Olfato | Física | 50 |  | exclusiva do Lobisomem (entra na ficha ao escolher a raça); fora da lista original, valor das regras |
+| Olfato | Física | 50 |  | exclusiva do Lobisomem: toda ficha a recebe (o ganho não se perde ao trocar de raça) e o frontend só a mostra para Lobisomem; fora da lista original, valor das regras |
 | Antropologia | Mental | 1 |  |  |
 | Arqueologia | Mental | 1 |  |  |
 | Arte/Ofício | Mental | 5 |  |  |
