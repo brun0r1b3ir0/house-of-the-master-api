@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.DockerClientFactory;
 
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -20,15 +21,18 @@ public class DockerDisponivelOuFalhaNoCi implements ExecutionCondition {
 
     private final Supplier<String> motivoDeDockerIndisponivel;
     private final Function<String, String> variavelDeAmbiente;
+    private final Consumer<String> avisar;
 
     public DockerDisponivelOuFalhaNoCi() {
-        this(DockerDisponivelOuFalhaNoCi::verificarDocker, System::getenv);
+        this(DockerDisponivelOuFalhaNoCi::verificarDocker, System::getenv, DockerDisponivelOuFalhaNoCi::avisarNaSaida);
     }
 
     DockerDisponivelOuFalhaNoCi(Supplier<String> motivoDeDockerIndisponivel,
-                                Function<String, String> variavelDeAmbiente) {
+                                Function<String, String> variavelDeAmbiente,
+                                Consumer<String> avisar) {
         this.motivoDeDockerIndisponivel = motivoDeDockerIndisponivel;
         this.variavelDeAmbiente = variavelDeAmbiente;
+        this.avisar = avisar;
     }
 
     @Override
@@ -48,12 +52,16 @@ public class DockerDisponivelOuFalhaNoCi implements ExecutionCondition {
         }
 
         String aviso = teste + " PULADO: as migrations NÃO foram testadas contra o Postgres. Motivo: " + motivo;
+        avisar.accept(aviso);
+        return ConditionEvaluationResult.disabled(aviso);
+    }
+
+    private static void avisarNaSaida(String aviso) {
         System.err.println();
         System.err.println("=".repeat(100));
         System.err.println("ATENÇÃO: " + aviso);
         System.err.println("=".repeat(100));
         System.err.println();
-        return ConditionEvaluationResult.disabled(aviso);
     }
 
     /** null se o Docker estiver utilizável; senão, a causa encontrada pelo Testcontainers. */
