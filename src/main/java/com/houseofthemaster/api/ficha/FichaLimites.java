@@ -1,7 +1,9 @@
 package com.houseofthemaster.api.ficha;
 
+import java.util.List;
+
 /**
- * Limites técnicos da ficha (POST e PATCH). Único lugar a mudar.
+ * Limites técnicos e valores aceitos da ficha (POST e PATCH). Único lugar a mudar.
  *
  * Não são regras de jogo: só tetos para impedir valores absurdos. As regras (ex.: atual <= máximo)
  * são do frontend. Campos com teto próprio do sistema (sangria 0-10) mantêm o seu.
@@ -25,6 +27,15 @@ public final class FichaLimites {
 
     /** Operações por PATCH. */
     public static final int OPS_MAXIMAS = 100;
+
+    /** regenOverrides.<PV|PE|PM>. */
+    public static final int REGEN_OVERRIDE_MAXIMO = 99;
+
+    /** Valores aceitos em alcateia.papel. */
+    public static final List<String> PAPEIS_ALCATEIA = List.of("membro", "alfa", "alfa-secundario");
+
+    /** Valores aceitos em alcateia.linhagem. */
+    public static final List<String> LINHAGENS_ALCATEIA = List.of("normal", "verdadeira");
 
     private FichaLimites() {
     }

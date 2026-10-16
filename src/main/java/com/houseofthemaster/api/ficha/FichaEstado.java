@@ -27,6 +27,9 @@ public class FichaEstado {
     public static final List<String> CONTADORES = List.of("exaustao", "fome", "sede", "debilitantes", "frio", "sangria");
     public static final List<String> FLAGS = List.of("verbena", "colapsoMagico");
     public static final List<String> ABATES = List.of("vampiros", "outros");
+    /** Exceções digitadas sobre valores calculados; chave ausente = sem exceção. */
+    public static final List<String> OVERRIDES = List.of("PV", "PE", "PM", "MOV", "Corpo", "Conhecimento");
+    public static final List<String> REGEN_OVERRIDES = List.of("PV", "PE", "PM");
 
     /** FOR, CON, TAM, DES, APA, INT, POD, EDU. */
     private Map<String, Integer> atributos;

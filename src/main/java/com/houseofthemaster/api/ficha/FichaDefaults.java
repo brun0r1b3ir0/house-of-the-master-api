@@ -33,18 +33,22 @@ public final class FichaDefaults {
         FichaEstado.FLAGS.forEach(chave -> flags.put(chave, false));
         estado.setFlags(flags);
 
-        FichaEstado.Alcateia alcateia = new FichaEstado.Alcateia();
-        alcateia.setAtiva(false);
-        alcateia.setMembros(0);
-        alcateia.setPapel("membro");
-        alcateia.setLinhagem("normal");
-        estado.setAlcateia(alcateia);
+        estado.setAlcateia(alcateiaInicial());
 
         estado.setAbates(preencher(FichaEstado.ABATES, 0));
         estado.setOverrides(new LinkedHashMap<>());
         estado.setRegenOverrides(new LinkedHashMap<>());
         estado.setCondicoes(new LinkedHashMap<>());
         return estado;
+    }
+
+    public static FichaEstado.Alcateia alcateiaInicial() {
+        FichaEstado.Alcateia alcateia = new FichaEstado.Alcateia();
+        alcateia.setAtiva(false);
+        alcateia.setMembros(0);
+        alcateia.setPapel("membro");
+        alcateia.setLinhagem("normal");
+        return alcateia;
     }
 
     private static Map<String, Integer> preencher(Iterable<String> chaves, int valor) {

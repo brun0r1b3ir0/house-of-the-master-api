@@ -192,8 +192,36 @@ PATCH recebe uma lista de operações, cada uma com **campo da lista permitida**
 { "ops": [ { "campo": "atuais.PV", "valor": 7 }, { "campo": "pericias.Furtividade.ganho", "valor": 20 } ] }
 ```
 
-- Campos fora da lista permitida (ex.: `pericias.X.valorInicial`) → 400.
-- Faixas básicas validadas (contadores ≥ 0, sangria 0–10, perícia ≥ 0). "Atual ≤ máximo" é clampado no frontend (o máximo depende do cálculo).
+**Lista permitida (final).** Tetos e valores aceitos ficam em `FichaLimites` (backend); são limites técnicos, não regras de jogo.
+
+| Campo | Valor aceito |
+|---|---|
+| `nome` | texto não vazio, até 120 caracteres |
+| `ocupacao` | texto até 120 caracteres, ou `null` |
+| `raca` | `HUMANO`, `CACADOR`, `BRUXO`, `VAMPIRO`, `LOBISOMEM`, `VIAJANTE` ou `null` |
+| `estagioSanidade` | um dos 8 estágios (`PLENITUDE` … `INFERNO`) |
+| `atributos.<FOR\|CON\|TAM\|DES\|APA\|INT\|POD\|EDU>` | inteiro 0–9999 |
+| `atuais.<PV\|PE\|PM\|SAN\|SRT>` | inteiro 0–9999 (sem validar contra o máximo) |
+| `contadores.<exaustao\|fome\|sede\|debilitantes\|frio>` | inteiro 0–9999 |
+| `contadores.sangria` | inteiro 0–10 |
+| `perdaPermanenteTam` | inteiro 0–9999 |
+| `flags.<verbena\|colapsoMagico>` | `true` / `false` |
+| `condicoes.<chave>` | inteiro 0–9999; chave `^[a-z0-9]+(-[a-z0-9]+)*$`, até 64 caracteres |
+| `pericias.<nome>.ganho` | inteiro 0–9999; a perícia precisa existir na ficha |
+| `alcateia.ativa` | `true` / `false` |
+| `alcateia.membros` | inteiro 0–9999 |
+| `alcateia.papel` | `membro`, `alfa`, `alfa-secundario` |
+| `alcateia.linhagem` | `normal`, `verdadeira` |
+| `abates.<vampiros\|outros>` | inteiro 0–9999 |
+| `overrides.<PV\|PE\|PM\|MOV\|Corpo\|Conhecimento>` | inteiro 0–9999, ou `null` para **remover** a exceção (a chave sai do mapa) |
+| `regenOverrides.<PV\|PE\|PM>` | inteiro 0–99, ou `null` para **remover** a exceção |
+
+- Qualquer outro campo → 400, inclusive `pericias.X.valorInicial` e `pericias.X.ganhoTreino`.
+- Até 100 ops por PATCH; caminho do campo até 200 caracteres.
+- Atômico: se qualquer op for inválida, nenhuma é aplicada (a resposta indica qual: `ops[i]`).
+- Ordem das verificações: participação (404), permissão (403), validação (400).
+- Log: só gera evento o campo que de fato mudou; remover uma exceção gera evento com `novo = null`; `null` numa exceção que não existe não muda nada.
+- "Atual ≤ máximo" é clampado no frontend (o máximo depende do cálculo).
 - Como só o dono escreve em PJ, não há disputa de edição; sem controle de versão por enquanto (última escrita vence).
 
 ---
