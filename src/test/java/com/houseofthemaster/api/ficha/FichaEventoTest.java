@@ -264,6 +264,68 @@ class FichaEventoTest extends FichaTestBase {
             .andExpect(jsonPath("$[0].autorNome").value("Mestre"));
     }
 
+    // ---------- Raça e Olfato ----------
+
+    @Test
+    void trocaDeRacaNaoJuntaMesmoDentroDaJanela() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patch(mesa.jogador1(), mesa, ficha, "raca", "\"VAMPIRO\"").andExpect(status().isOk());
+        relogio.avancar(Duration.ofSeconds(5));
+        patch(mesa.jogador1(), mesa, ficha, "raca", "\"HUMANO\"").andExpect(status().isOk());
+
+        eventos(mesa.jogador1(), mesa, ficha, "")
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].campo").value("raca"))
+            .andExpect(jsonPath("$[0].anterior").value("VAMPIRO"))
+            .andExpect(jsonPath("$[0].novo").value("HUMANO"))
+            .andExpect(jsonPath("$[0].autorNome").value("Ana"))
+            .andExpect(jsonPath("$[1].anterior").value("HUMANO"))
+            .andExpect(jsonPath("$[1].novo").value("VAMPIRO"));
+    }
+
+    @Test
+    void deixarDeSerLobisomemZeraOlfatoERegistraNoHistorico() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Lobo");
+        patchOps(mesa.jogador1(), mesa, ficha, """
+            {"campo": "raca", "valor": "LOBISOMEM"}, {"campo": "pericias.Olfato.ganho", "valor": 20}
+            """).andExpect(status().isOk());
+        // ganhoTreino não é editável pelo PATCH: prepara direto no banco
+        transactionTemplate.executeWithoutResult(tx -> fichaRepository.findById(UUID.fromString(ficha)).orElseThrow()
+            .getPericias().stream().filter(p -> p.getNome().equals("Olfato")).findFirst().orElseThrow()
+            .setGanhoTreino(3));
+
+        relogio.avancar(Duration.ofSeconds(60));
+        patch(mesa.jogador1(), mesa, ficha, "raca", "\"VAMPIRO\"").andExpect(status().isOk())
+            .andExpect(jsonPath("$.pericias[?(@.nome == 'Olfato')].ganho").value(0))
+            .andExpect(jsonPath("$.pericias[?(@.nome == 'Olfato')].ganhoTreino").value(0));
+
+        eventos(mesa.jogador1(), mesa, ficha, "?antes=2026-10-16T12:00:30Z")
+            .andExpect(jsonPath("$[?(@.campo == 'pericias.Olfato.ganho')].novo").value(20));
+        eventos(mesa.jogador1(), mesa, ficha, "?limite=3")
+            .andExpect(jsonPath("$", hasSize(3)))
+            .andExpect(jsonPath("$[?(@.campo == 'raca')].anterior").value("LOBISOMEM"))
+            .andExpect(jsonPath("$[?(@.campo == 'raca')].novo").value("VAMPIRO"))
+            .andExpect(jsonPath("$[?(@.campo == 'pericias.Olfato.ganho')].anterior").value(20))
+            .andExpect(jsonPath("$[?(@.campo == 'pericias.Olfato.ganho')].novo").value(0))
+            .andExpect(jsonPath("$[?(@.campo == 'pericias.Olfato.ganhoTreino')].anterior").value(3))
+            .andExpect(jsonPath("$[?(@.campo == 'pericias.Olfato.ganhoTreino')].novo").value(0));
+    }
+
+    @Test
+    void trocarDeRacaSemOlfatoNaoGeraEventoDeOlfato() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patch(mesa.jogador1(), mesa, ficha, "raca", "\"BRUXO\"").andExpect(status().isOk());
+
+        eventos(mesa.jogador1(), mesa, ficha, "")
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].campo").value("raca"));
+    }
+
     // ---------- Exceções (overrides) e alcateia ----------
 
     @Test

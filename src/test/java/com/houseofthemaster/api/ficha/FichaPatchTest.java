@@ -385,6 +385,68 @@ class FichaPatchTest extends FichaTestBase {
             .andExpect(jsonPath("$.estado.alcateia.papel").value("alfa"));
     }
 
+    // ---------- Olfato (só LOBISOMEM; ops avaliadas na ordem) ----------
+
+    @Test
+    void olfatoSoParaLobisomem() throws Exception {
+        Mesa mesa = montarMesa();
+        String humano = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), humano, """
+                {"ops": [{"campo": "pericias.Olfato.ganho", "valor": 10}]}
+                """)
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(containsString("ops[0]")))
+            .andExpect(content().string(containsString("Olfato é exclusiva do Lobisomem")));
+
+        // raça trocada antes, no mesmo PATCH: passa
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), humano, """
+                {"ops": [{"campo": "raca", "valor": "LOBISOMEM"}, {"campo": "pericias.Olfato.ganho", "valor": 10}]}
+                """)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.raca").value("LOBISOMEM"))
+            .andExpect(jsonPath("$.pericias[?(@.nome == 'Olfato')].ganho").value(10));
+    }
+
+    @Test
+    void olfatoAntesDaTrocaDeRacaNoMesmoPatchFalhaENadaEAplicado() throws Exception {
+        Mesa mesa = montarMesa();
+        String humano = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), humano, """
+                {"ops": [{"campo": "pericias.Olfato.ganho", "valor": 10}, {"campo": "raca", "valor": "LOBISOMEM"}]}
+                """)
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(containsString("ops[0]")));
+
+        getFicha(mesa.jogador1(), mesa.campanhaId(), humano)
+            .andExpect(jsonPath("$.raca").value("HUMANO"))
+            .andExpect(jsonPath("$.pericias[?(@.nome == 'Olfato')].ganho").value(0));
+    }
+
+    @Test
+    void lobisomemQueTrocaDeRacaNoMesmoPatchNaoPodeMaisMexerEmOlfato() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Lobo");
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
+            {"ops": [{"campo": "raca", "valor": "LOBISOMEM"}, {"campo": "pericias.Olfato.ganho", "valor": 15}]}
+            """).andExpect(status().isOk());
+
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
+                {"ops": [{"campo": "raca", "valor": "HUMANO"}, {"campo": "pericias.Olfato.ganho", "valor": 15}]}
+                """)
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(containsString("ops[1]")));
+
+        // só a troca de raça: Olfato vai a 0 na mesma transação
+        patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
+                {"ops": [{"campo": "raca", "valor": null}]}
+                """)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.raca").doesNotExist())
+            .andExpect(jsonPath("$.pericias[?(@.nome == 'Olfato')].ganho").value(0));
+    }
+
     // ---------- Atomicidade ----------
 
     @Test

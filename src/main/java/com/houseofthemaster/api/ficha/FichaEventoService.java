@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -19,12 +20,16 @@ import java.util.UUID;
  * de {@code hotm.ficha.log.janela-juncao-segundos} (padrão 30 s), esse evento é atualizado (mantém o
  * "anterior" original, troca "novo" e "em") em vez de criar outro. Se a junção voltar ao valor
  * original, o evento é apagado. Ex.: PV 10 → 8 → 7 → 6 vira uma linha "PV 10 → 6".
+ * Exceção: a troca de raça nunca junta (cada troca fica registrada, mesmo em menos de 30 s).
  */
 @Service
 public class FichaEventoService {
 
     public static final int LIMITE_PADRAO = 50;
     public static final int LIMITE_MAXIMO = 200;
+
+    /** Campos cujo evento nunca é juntado com o anterior. */
+    static final Set<String> CAMPOS_SEM_JUNCAO = Set.of("raca");
 
     private final FichaEventoRepository fichaEventoRepository;
     private final Duration janelaJuncao;
@@ -43,7 +48,7 @@ public class FichaEventoService {
                 .findFirstByFichaIdAndCampoOrderByEmDesc(ficha.getId(), alteracao.campo())
                 .orElse(null);
 
-            if (ultimo != null && podeJuntar(ultimo, autor, agora)) {
+            if (ultimo != null && !CAMPOS_SEM_JUNCAO.contains(alteracao.campo()) && podeJuntar(ultimo, autor, agora)) {
                 ultimo.setNovo(alteracao.novo());
                 ultimo.setEm(agora);
                 if (Objects.equals(ultimo.getAnterior(), ultimo.getNovo())) {
@@ -61,6 +66,18 @@ public class FichaEventoService {
             evento.setEm(agora);
             fichaEventoRepository.save(evento);
         }
+    }
+
+    /** Grava um evento avulso, sempre novo (sem junção). Usado na conclusão da criação. */
+    public void registrarUnico(Ficha ficha, Usuario autor, String campo, Object anterior, Object novo, Instant agora) {
+        FichaEvento evento = new FichaEvento();
+        evento.setFicha(ficha);
+        evento.setAutor(autor);
+        evento.setCampo(campo);
+        evento.setAnterior(anterior);
+        evento.setNovo(novo);
+        evento.setEm(agora);
+        fichaEventoRepository.save(evento);
     }
 
     private boolean podeJuntar(FichaEvento ultimo, Usuario autor, Instant agora) {

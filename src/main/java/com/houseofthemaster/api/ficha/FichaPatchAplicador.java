@@ -48,20 +48,49 @@ public class FichaPatchAplicador {
 
     // ---------- Fase 1: validar tudo, sem alterar nada ----------
 
+    /**
+     * As ops são avaliadas NA ORDEM, com a raça "corrente" do PATCH: raca -> LOBISOMEM seguida de
+     * pericias.Olfato.ganho passa. Trocar a raça para outra que não LOBISOMEM acrescenta, logo após a op
+     * de raça, a zeragem de ganho e ganhoTreino de Olfato (registrada no log como qualquer alteração).
+     */
     public List<Alteracao> validar(Ficha ficha, List<OpPatch> ops) {
         List<Alteracao> alteracoes = new ArrayList<>();
+        Raca racaCorrente = ficha.getRaca();
         for (int i = 0; i < ops.size(); i++) {
             OpPatch op = ops.get(i);
+            Alteracao alteracao;
             try {
-                alteracoes.add(validar(ficha, op));
+                alteracao = validar(ficha, op, racaCorrente);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("ops[" + i + "] (" + op.getCampo() + "): " + e.getMessage());
+            }
+            alteracoes.add(alteracao);
+
+            if ("raca".equals(alteracao.campo())) {
+                Raca nova = alteracao.novo() == null ? null : Raca.valueOf((String) alteracao.novo());
+                if (nova != racaCorrente && nova != Raca.LOBISOMEM) {
+                    alteracoes.addAll(zerarOlfato(ficha));
+                }
+                racaCorrente = nova;
             }
         }
         return alteracoes;
     }
 
-    private Alteracao validar(Ficha ficha, OpPatch op) {
+    /** Ao deixar de ser Lobisomem, Olfato volta a 0 (ganho e ganhoTreino). */
+    private static List<Alteracao> zerarOlfato(Ficha ficha) {
+        return ficha.getPericias().stream()
+            .filter(p -> RegrasPericia.OLFATO.equals(p.getNome()))
+            .findFirst()
+            .map(olfato -> List.of(
+                new Alteracao(PREFIXO_PERICIAS + RegrasPericia.OLFATO + SUFIXO_GANHO,
+                    alvo(f -> olfato.getGanho(), (f, v) -> olfato.setGanho((Integer) v)), 0),
+                new Alteracao(PREFIXO_PERICIAS + RegrasPericia.OLFATO + ".ganhoTreino",
+                    alvo(f -> olfato.getGanhoTreino(), (f, v) -> olfato.setGanhoTreino((Integer) v)), 0)))
+            .orElse(List.of());
+    }
+
+    private Alteracao validar(Ficha ficha, OpPatch op, Raca racaCorrente) {
         String campo = op.getCampo();
         JsonNode valor = op.getValor();
         if (valor == null) {
@@ -126,7 +155,7 @@ public class FichaPatchAplicador {
                     chaveConhecida(chave, FichaEstado.REGEN_OVERRIDES)),
                 inteiroOuNulo(valor, FichaLimites.REGEN_OVERRIDE_MAXIMO));
             case "alcateia" -> validarAlcateia(campo, chave, valor);
-            case "pericias" -> validarPericia(ficha, campo, valor);
+            case "pericias" -> validarPericia(ficha, campo, valor, racaCorrente);
             default -> throw naoPermitido();
         };
     }
@@ -149,13 +178,19 @@ public class FichaPatchAplicador {
         };
     }
 
-    /** Só pericias.<nome>.ganho é permitido; o nome pode conter espaços, parênteses e barras. */
-    private Alteracao validarPericia(Ficha ficha, String campo, JsonNode valor) {
+    /**
+     * Só pericias.<nome>.ganho é permitido; o nome pode conter espaços, parênteses e barras.
+     * Olfato só para LOBISOMEM (raça corrente do PATCH).
+     */
+    private Alteracao validarPericia(Ficha ficha, String campo, JsonNode valor, Raca racaCorrente) {
         if (!campo.startsWith(PREFIXO_PERICIAS) || !campo.endsWith(SUFIXO_GANHO)
                 || campo.length() <= PREFIXO_PERICIAS.length() + SUFIXO_GANHO.length()) {
             throw naoPermitido();
         }
         String nome = campo.substring(PREFIXO_PERICIAS.length(), campo.length() - SUFIXO_GANHO.length());
+        if (!RegrasPericia.permitidaParaRaca(nome, racaCorrente)) {
+            throw new IllegalArgumentException(RegrasPericia.MENSAGEM_OLFATO);
+        }
 
         FichaPericia pericia = ficha.getPericias().stream()
             .filter(p -> p.getNome().equals(nome))

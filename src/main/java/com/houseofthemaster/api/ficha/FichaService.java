@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -36,6 +37,7 @@ public class FichaService {
     private final CatalogoSistema catalogoSistema;
     private final FichaPatchAplicador patchAplicador;
     private final FichaEventoService fichaEventoService;
+    private final CriacaoValidador criacaoValidador;
     private final Clock clock;
     private final Map<String, Integer> ordemNoCatalogo = new HashMap<>();
 
@@ -44,12 +46,14 @@ public class FichaService {
                         CatalogoSistema catalogoSistema,
                         FichaPatchAplicador patchAplicador,
                         FichaEventoService fichaEventoService,
+                        CriacaoValidador criacaoValidador,
                         Clock clock) {
         this.fichaRepository = fichaRepository;
         this.participacaoRepository = participacaoRepository;
         this.catalogoSistema = catalogoSistema;
         this.patchAplicador = patchAplicador;
         this.fichaEventoService = fichaEventoService;
+        this.criacaoValidador = criacaoValidador;
         this.clock = clock;
 
         List<PericiaCatalogo> pericias = catalogoSistema.pericias();
@@ -102,6 +106,9 @@ public class FichaService {
         ficha.setOcupacao(request.getOcupacao());
         ficha.setRaca(request.getRaca());
         ficha.setEstado(FichaDefaults.estadoInicial());
+        if (request.getTipo() == TipoFicha.PJ) {
+            ficha.getEstado().setCriacao(FichaDefaults.criacaoPendente());
+        }
         Instant agora = agora();
         ficha.setCriadaEm(agora);
         ficha.setAtualizadaEm(agora);
@@ -154,6 +161,55 @@ public class FichaService {
         Ficha ficha = fichaEditavel(participacao, campanhaId, fichaId);
         ficha.setArquivada(true);
         ficha.setAtualizadaEm(agora());
+    }
+
+    /**
+     * Conclui a criação de personagem, numa transação: grava os 8 atributos, SUBSTITUI o ganho de todas as
+     * perícias (as que não estão nos ganhos voltam a 0), marca estado.criacao como concluída e grava UM
+     * evento no log. Ordem: 404 (participação/visibilidade), 403 (Mestre em PJ), 409 (não está em
+     * criação), 400 (regras, ver CriacaoValidador).
+     */
+    @Transactional
+    public FichaResponse concluirCriacao(UUID usuarioId, UUID campanhaId, UUID fichaId, ConcluirCriacaoRequest request) {
+        Participacao participacao = participacao(usuarioId, campanhaId);
+        Ficha ficha = fichaEditavel(participacao, campanhaId, fichaId);
+
+        FichaEstado.Criacao criacao = ficha.getEstado().getCriacao();
+        if (criacao == null || !Boolean.FALSE.equals(criacao.getConcluida())) {
+            throw new IllegalStateException("Esta ficha não está em criação.");
+        }
+
+        CriacaoValidador.CriacaoValidada validada = criacaoValidador.validar(ficha.getRaca(), request);
+        for (String nome : validada.ganhoPorPericia().keySet()) {
+            if (ficha.getPericias().stream().noneMatch(p -> p.getNome().equals(nome))) {
+                throw new IllegalArgumentException("A ficha não tem a perícia \"" + nome + "\".");
+            }
+        }
+
+        Instant agora = agora();
+        ficha.getEstado().setAtributos(new LinkedHashMap<>(validada.atributos()));
+        for (FichaPericia pericia : ficha.getPericias()) {
+            pericia.setGanho(validada.ganhoPorPericia().getOrDefault(pericia.getNome(), 0));
+        }
+
+        FichaEstado.GanhosCriacao ganhos = new FichaEstado.GanhosCriacao();
+        ganhos.setProfissao(new LinkedHashMap<>(validada.ganhosProfissao()));
+        ganhos.setInteresse(new LinkedHashMap<>(validada.ganhosInteresse()));
+        FichaEstado.SnapshotCriacao snapshot = new FichaEstado.SnapshotCriacao();
+        snapshot.setAtributos(new LinkedHashMap<>(validada.atributos()));
+        snapshot.setGanhos(ganhos);
+
+        FichaEstado.Criacao concluida = new FichaEstado.Criacao();
+        concluida.setConcluida(true);
+        concluida.setProfissaoAtributos(List.of(validada.principal(), validada.secundario()));
+        concluida.setPericiasProfissao(validada.periciasProfissao());
+        concluida.setSnapshot(snapshot);
+        concluida.setConcluidaEm(agora);
+        ficha.getEstado().setCriacao(concluida);
+        ficha.setAtualizadaEm(agora);
+
+        fichaEventoService.registrarUnico(ficha, participacao.getUsuario(), "criacao.concluida", false, true, agora);
+        return paraResponse(ficha);
     }
 
     /** Log da ficha: visível a quem pode ver a ficha (dono da PJ e Mestre). */

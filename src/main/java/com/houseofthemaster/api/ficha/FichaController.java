@@ -95,6 +95,26 @@ public class FichaController {
         }
     }
 
+    @PostMapping("/{fichaId}/criacao/concluir")
+    public ResponseEntity<?> concluirCriacao(@PathVariable UUID campanhaId,
+                                             @PathVariable UUID fichaId,
+                                             @RequestBody ConcluirCriacaoRequest request,
+                                             Authentication authentication) {
+        try {
+            UUID usuarioId = UUID.fromString(authentication.getName());
+            return ResponseEntity.ok(fichaService.concluirCriacao(usuarioId, campanhaId, fichaId, request));
+
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/{fichaId}")
     public ResponseEntity<?> arquivar(@PathVariable UUID campanhaId,
                                       @PathVariable UUID fichaId,

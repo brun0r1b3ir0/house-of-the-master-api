@@ -42,6 +42,13 @@ public final class FichaDefaults {
         return estado;
     }
 
+    /** PJ nova começa em criação; NPC não tem criação (null). */
+    public static FichaEstado.Criacao criacaoPendente() {
+        FichaEstado.Criacao criacao = new FichaEstado.Criacao();
+        criacao.setConcluida(false);
+        return criacao;
+    }
+
     public static FichaEstado.Alcateia alcateiaInicial() {
         FichaEstado.Alcateia alcateia = new FichaEstado.Alcateia();
         alcateia.setAtiva(false);

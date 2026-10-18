@@ -61,6 +61,33 @@ public abstract class FichaPersistenciaCasos {
     }
 
     @Test
+    void criacaoConcluidaVaiEVoltaComInstantTipado() {
+        FichaEstado estado = estadoCompleto();
+        FichaEstado.GanhosCriacao ganhos = new FichaEstado.GanhosCriacao();
+        ganhos.setProfissao(new LinkedHashMap<>(Map.of("Furtividade", 60)));
+        ganhos.setInteresse(new LinkedHashMap<>(Map.of("Medicina", 50)));
+        FichaEstado.SnapshotCriacao snapshot = new FichaEstado.SnapshotCriacao();
+        snapshot.setAtributos(new LinkedHashMap<>(estado.getAtributos()));
+        snapshot.setGanhos(ganhos);
+        FichaEstado.Criacao criacao = new FichaEstado.Criacao();
+        criacao.setConcluida(true);
+        criacao.setProfissaoAtributos(java.util.List.of("DES", "EDU"));
+        criacao.setPericiasProfissao(java.util.List.of("Furtividade", "Charme"));
+        criacao.setSnapshot(snapshot);
+        criacao.setConcluidaEm(Instant.parse("2026-10-18T10:00:00.123456Z"));
+        estado.setCriacao(criacao);
+        Ficha ficha = novaFicha(estado);
+        em.persist(ficha);
+        em.flush();
+        em.clear();
+
+        FichaEstado.Criacao lida = em.find(Ficha.class, ficha.getId()).getEstado().getCriacao();
+
+        assertThat(lida).isEqualTo(criacao);
+        assertThat(lida.getConcluidaEm()).isEqualTo(Instant.parse("2026-10-18T10:00:00.123456Z"));
+    }
+
+    @Test
     void valoresNulosNoEstadoSobrevivem() {
         FichaEstado estado = new FichaEstado();
         Map<String, Integer> atuais = new HashMap<>();

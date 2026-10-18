@@ -1,10 +1,12 @@
 package com.houseofthemaster.api.ficha;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -58,6 +60,45 @@ public class FichaEstado {
 
     /** Valor de cada condição do catálogo novo, indexado pela chave. */
     private Map<String, Integer> condicoes;
+
+    /**
+     * Criação de personagem. PJ nova: { concluida: false }. Fichas antigas e NPCs: null.
+     * Só muda pelo endpoint de conclusão (não está na lista do PATCH).
+     */
+    private Criacao criacao;
+
+    @Getter
+    @Setter
+    @EqualsAndHashCode
+    @ToString
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class Criacao {
+        private Boolean concluida;
+        /** [principal, secundario] usados no orçamento de profissão. */
+        private List<String> profissaoAtributos;
+        private List<String> periciasProfissao;
+        private SnapshotCriacao snapshot;
+        private Instant concluidaEm;
+    }
+
+    /** O que foi enviado na conclusão da criação (atributos digitados e pontos por bolso). */
+    @Getter
+    @Setter
+    @EqualsAndHashCode
+    @ToString
+    public static class SnapshotCriacao {
+        private Map<String, Integer> atributos;
+        private GanhosCriacao ganhos;
+    }
+
+    @Getter
+    @Setter
+    @EqualsAndHashCode
+    @ToString
+    public static class GanhosCriacao {
+        private Map<String, Integer> profissao;
+        private Map<String, Integer> interesse;
+    }
 
     @Getter
     @Setter

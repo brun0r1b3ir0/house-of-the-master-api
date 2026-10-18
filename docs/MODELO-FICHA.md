@@ -63,11 +63,17 @@ Só dados que alguém digitou. **Nada calculado é salvo** (efetivo, ½, ⅕, PV
   "abates":      { "vampiros": 0, "outros": 0 },
   "overrides":   {},
   "regenOverrides": {},
-  "condicoes":   { "chave-da-condicao-nova": 0 }
+  "condicoes":   { "chave-da-condicao-nova": 0 },
+  "criacao":     { "concluida": false }
 }
 ```
 
 `condicoes` guarda o valor de cada condição do catálogo novo (contador ou liga/desliga), indexada pela chave.
+
+`criacao` (criação de personagem):
+- PJ nova: `{ "concluida": false }` (o front mostra "Criação não concluída"). NPCs e fichas antigas: ausente/`null`.
+- Depois de `POST .../criacao/concluir`: `{ "concluida": true, "profissaoAtributos": [principal, secundario], "periciasProfissao": [7 nomes], "snapshot": { "atributos": {...}, "ganhos": { "profissao": {...}, "interesse": {...} } }, "concluidaEm": "<ISO-8601>" }`.
+- Não é editável pelo PATCH; só o endpoint de conclusão o altera.
 
 Hibernate 6: `@JdbcTypeCode(SqlTypes.JSON)` no campo. Funciona no Postgres (`jsonb`) e no H2 dos testes.
 
@@ -97,7 +103,7 @@ A coluna "Mágico" **não é guardada**: a perícia é mágica quando a raça do
 | anterior / novo | JSON | |
 | em | timestamp | |
 
-**Anti-flood (o Mestre não é inundado):** se o último evento do mesmo campo da ficha é do mesmo autor e tem menos de 30 s (`hotm.ficha.log.janela-juncao-segundos`), o backend atualiza esse evento (mantém `anterior` do primeiro, troca `novo` e `em`) em vez de criar outro. Ex.: PV 10→8→7→6 vira uma linha "PV 10 → 6". Se a junção voltar ao valor original, o evento é apagado. Só gera evento o campo que de fato mudou; ops repetidas no mesmo campo, no mesmo PATCH, viram um evento só. O Mestre consulta o log quando quiser; não há push por padrão.
+**Anti-flood (o Mestre não é inundado):** se o último evento do mesmo campo da ficha é do mesmo autor e tem menos de 30 s (`hotm.ficha.log.janela-juncao-segundos`), o backend atualiza esse evento (mantém `anterior` do primeiro, troca `novo` e `em`) em vez de criar outro. Ex.: PV 10→8→7→6 vira uma linha "PV 10 → 6". Se a junção voltar ao valor original, o evento é apagado. Só gera evento o campo que de fato mudou; ops repetidas no mesmo campo, no mesmo PATCH, viram um evento só. **Exceção:** a troca de `raca` nunca é juntada (trocar e voltar em menos de 30 s deixa os dois registros). A conclusão da criação gera um único evento `criacao.concluida` (`false → true`). O Mestre consulta o log quando quiser; não há push por padrão.
 
 ### 2.5 Catálogos (do sistema War If, versionados no repositório)
 
@@ -185,6 +191,7 @@ Padrão já usado no projeto: quem não deve saber que o recurso existe recebe 4
 | DELETE | `/campanhas/{cid}/fichas/{fid}` | arquiva |
 | GET | `/campanhas/{cid}/fichas/{fid}/eventos?antes=...&limite=...` | log paginado, mais recentes primeiro (`antes` = cursor ISO-8601; `limite` padrão 50, máximo 200) |
 | GET | `/campanhas/{cid}/sistema` | catálogos (perícias, condições novas) |
+| POST | `/campanhas/{cid}/fichas/{fid}/criacao/concluir` | conclui a criação de personagem (atômico; ver 4.1) |
 
 PATCH recebe uma lista de operações, cada uma com **campo da lista permitida** + valor:
 
@@ -207,7 +214,7 @@ PATCH recebe uma lista de operações, cada uma com **campo da lista permitida**
 | `perdaPermanenteTam` | inteiro 0–9999 |
 | `flags.<verbena\|colapsoMagico>` | `true` / `false` |
 | `condicoes.<chave>` | inteiro 0–9999; chave `^[a-z0-9]+(-[a-z0-9]+)*$`, até 64 caracteres |
-| `pericias.<nome>.ganho` | inteiro 0–9999; a perícia precisa existir na ficha |
+| `pericias.<nome>.ganho` | inteiro 0–9999; a perícia precisa existir na ficha. `pericias.Olfato.ganho` só se a raça (corrente no PATCH) for `LOBISOMEM` |
 | `alcateia.ativa` | `true` / `false` |
 | `alcateia.membros` | inteiro 0–9999 |
 | `alcateia.papel` | `membro`, `alfa`, `alfa-secundario` |
@@ -220,9 +227,36 @@ PATCH recebe uma lista de operações, cada uma com **campo da lista permitida**
 - Até 100 ops por PATCH; caminho do campo até 200 caracteres.
 - Atômico: se qualquer op for inválida, nenhuma é aplicada (a resposta indica qual: `ops[i]`).
 - Ordem das verificações: participação (404), permissão (403), validação (400).
+- Ops avaliadas NA ORDEM: `raca → LOBISOMEM` seguida de `pericias.Olfato.ganho` passa; a ordem inversa dá 400.
+- Trocar a `raca` para algo diferente de `LOBISOMEM` zera `ganho` e `ganhoTreino` de Olfato na mesma transação (com eventos no log). `ganhoTreino` continua fora da lista do PATCH.
 - Log: só gera evento o campo que de fato mudou; remover uma exceção gera evento com `novo = null`; `null` numa exceção que não existe não muda nada.
 - "Atual ≤ máximo" é clampado no frontend (o máximo depende do cálculo).
 - Como só o dono escreve em PJ, não há disputa de edição; sem controle de versão por enquanto (última escrita vence).
+
+### 4.1 Conclusão da criação
+
+`POST /campanhas/{cid}/fichas/{fid}/criacao/concluir`
+
+```json
+{
+  "atributos": { "FOR": 50, "CON": 50, "TAM": 60, "DES": 70, "APA": 50, "INT": 70, "POD": 50, "EDU": 60 },
+  "profissao": { "principal": "DES", "secundario": "EDU", "pericias": ["... 7 nomes"] },
+  "ganhos": { "profissao": { "Furtividade": 60 }, "interesse": { "Medicina": 50 } }
+}
+```
+
+Respostas: 200 com a ficha completa (mesmo formato do GET). Erros em texto simples, nesta ordem: 404 (não participante, outro jogador, ficha arquivada ou de outra campanha), 403 (Mestre numa PJ), 409 "Esta ficha não está em criação." (já concluída, NPC, ficha antiga sem `criacao`), 400 (regras).
+
+Regras (o servidor recalcula tudo com os atributos recebidos):
+- 8 atributos, cada um 15–90, soma exatamente 460; a raça da ficha precisa estar definida.
+- `principal` ∈ {FOR, DES, APA, EDU, INT}; `secundario` ∈ {EDU, INT}; iguais (EDU+EDU, INT+INT) valem 4× o atributo.
+- `profissao.pericias`: 7 nomes distintos do catálogo, ao menos 1 INTERPESSOAL.
+- Primórdios nunca recebe pontos na criação (nem entre as 7, nem em `ganhos`); Olfato só para LOBISOMEM.
+- `ganhos.profissao` só nas 7; `ganhos.interesse` em qualquer perícia permitida à raça; pontos inteiros de 1 a 80.
+- Valor final = valorInicial (Esquivar = ⌊DES/2⌋, Língua Nativa = EDU, com os atributos digitados) + pontos ≤ 80, para cada perícia que recebe pontos.
+- Orçamentos: profissão = 2×principal + 2×secundario; interesse = 2×INT. Gasto ≤ orçamento. Sobra só é aceita quando o teto de 80 impede de colocar o resto em qualquer perícia elegível; senão, 400 "Faltam gastar N pontos de …".
+
+Efeito (uma transação): grava os 8 atributos; o `ganho` de cada perícia passa a ser profissão + interesse (as demais voltam a 0; ganhos anteriores são substituídos); `estado.criacao` vira concluída (formato em 2.2); um único evento `criacao.concluida` no log.
 
 ---
 
