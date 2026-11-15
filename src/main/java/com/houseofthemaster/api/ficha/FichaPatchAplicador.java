@@ -52,6 +52,8 @@ public class FichaPatchAplicador {
      * As ops são avaliadas NA ORDEM, com a raça "corrente" do PATCH: raca -> LOBISOMEM seguida de
      * pericias.Olfato.ganho passa. Trocar a raça para outra que não LOBISOMEM acrescenta, logo após a op
      * de raça, a zeragem de ganho e ganhoTreino de Olfato (registrada no log como qualquer alteração).
+     * VAMPIRO é permanente: sair dele (para outra raça ou null) é 400. Entrar nele (transformação) acrescenta,
+     * logo após a op de raça, atributos.FOR = 120 e atributos.DES = 120.
      */
     public List<Alteracao> validar(Ficha ficha, List<OpPatch> ops) {
         List<Alteracao> alteracoes = new ArrayList<>();
@@ -64,17 +66,36 @@ public class FichaPatchAplicador {
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("ops[" + i + "] (" + op.getCampo() + "): " + e.getMessage());
             }
-            alteracoes.add(alteracao);
-
-            if ("raca".equals(alteracao.campo())) {
-                Raca nova = alteracao.novo() == null ? null : Raca.valueOf((String) alteracao.novo());
-                if (nova != racaCorrente && nova != Raca.LOBISOMEM) {
-                    alteracoes.addAll(zerarOlfato(ficha));
-                }
-                racaCorrente = nova;
+            if (!"raca".equals(alteracao.campo())) {
+                alteracoes.add(alteracao);
+                continue;
             }
+
+            Raca nova = alteracao.novo() == null ? null : Raca.valueOf((String) alteracao.novo());
+            if (!RegrasRaca.trocaPermitida(racaCorrente, nova)) {
+                throw new IllegalArgumentException(
+                    "ops[" + i + "] (" + op.getCampo() + "): " + RegrasRaca.MENSAGEM_VAMPIRO_PERMANENTE);
+            }
+            alteracoes.add(alteracao);
+            if (nova != racaCorrente && nova != Raca.LOBISOMEM) {
+                alteracoes.addAll(zerarOlfato(ficha));
+            }
+            if (RegrasRaca.transformaEmVampiro(racaCorrente, nova)) {
+                alteracoes.addAll(transformarEmVampiro());
+            }
+            racaCorrente = nova;
         }
         return alteracoes;
+    }
+
+    /** Na transformação em Vampiro, FOR e DES passam a 120 (em estado.atributos, com eventos no log). */
+    private static List<Alteracao> transformarEmVampiro() {
+        return FichaEstado.ATRIBUTOS.stream()
+            .filter(RegrasRaca.ATRIBUTOS_DA_TRANSFORMACAO_VAMPIRO::containsKey)
+            .map(chave -> new Alteracao("atributos." + chave,
+                alvoMapa(FichaEstado::getAtributos, FichaEstado::setAtributos, chave),
+                RegrasRaca.ATRIBUTOS_DA_TRANSFORMACAO_VAMPIRO.get(chave)))
+            .toList();
     }
 
     /** Ao deixar de ser Lobisomem, Olfato volta a 0 (ganho e ganhoTreino). */

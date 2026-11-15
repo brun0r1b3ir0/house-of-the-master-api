@@ -229,6 +229,8 @@ PATCH recebe uma lista de operações, cada uma com **campo da lista permitida**
 - Ordem das verificações: participação (404), permissão (403), validação (400).
 - Ops avaliadas NA ORDEM: `raca → LOBISOMEM` seguida de `pericias.Olfato.ganho` passa; a ordem inversa dá 400.
 - Trocar a `raca` para algo diferente de `LOBISOMEM` zera `ganho` e `ganhoTreino` de Olfato na mesma transação (com eventos no log). `ganhoTreino` continua fora da lista do PATCH.
+- `VAMPIRO` é permanente: com a raça corrente `VAMPIRO`, trocar para outra raça ou para `null` dá 400 ("A raça Vampiro é permanente e não pode ser trocada."), inclusive dentro do mesmo PATCH que acabou de transformar. `VAMPIRO → VAMPIRO` não é erro e não muda nada.
+- Transformação (de outra raça ou de `null` para `VAMPIRO`): grava `atributos.FOR = 120` e `atributos.DES = 120` na mesma transação, com eventos no log. Só o PATCH transforma; criar a ficha já como `VAMPIRO` não grava os 120.
 - Log: só gera evento o campo que de fato mudou; remover uma exceção gera evento com `novo = null`; `null` numa exceção que não existe não muda nada.
 - "Atual ≤ máximo" é clampado no frontend (o máximo depende do cálculo).
 - Como só o dono escreve em PJ, não há disputa de edição; sem controle de versão por enquanto (última escrita vence).

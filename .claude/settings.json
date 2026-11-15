@@ -1,5 +1,9 @@
 {
   "permissions": {
-    "deny": ["Read(./.env)", "Read(./.env.*)"]
-  }
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  },
+  "language": "portuguese"
 }

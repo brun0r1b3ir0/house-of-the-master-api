@@ -271,18 +271,18 @@ class FichaEventoTest extends FichaTestBase {
         Mesa mesa = montarMesa();
         String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
 
-        patch(mesa.jogador1(), mesa, ficha, "raca", "\"VAMPIRO\"").andExpect(status().isOk());
+        patch(mesa.jogador1(), mesa, ficha, "raca", "\"BRUXO\"").andExpect(status().isOk());
         relogio.avancar(Duration.ofSeconds(5));
         patch(mesa.jogador1(), mesa, ficha, "raca", "\"HUMANO\"").andExpect(status().isOk());
 
         eventos(mesa.jogador1(), mesa, ficha, "")
             .andExpect(jsonPath("$", hasSize(2)))
             .andExpect(jsonPath("$[0].campo").value("raca"))
-            .andExpect(jsonPath("$[0].anterior").value("VAMPIRO"))
+            .andExpect(jsonPath("$[0].anterior").value("BRUXO"))
             .andExpect(jsonPath("$[0].novo").value("HUMANO"))
             .andExpect(jsonPath("$[0].autorNome").value("Ana"))
             .andExpect(jsonPath("$[1].anterior").value("HUMANO"))
-            .andExpect(jsonPath("$[1].novo").value("VAMPIRO"));
+            .andExpect(jsonPath("$[1].novo").value("BRUXO"));
     }
 
     @Test
@@ -298,7 +298,7 @@ class FichaEventoTest extends FichaTestBase {
             .setGanhoTreino(3));
 
         relogio.avancar(Duration.ofSeconds(60));
-        patch(mesa.jogador1(), mesa, ficha, "raca", "\"VAMPIRO\"").andExpect(status().isOk())
+        patch(mesa.jogador1(), mesa, ficha, "raca", "\"BRUXO\"").andExpect(status().isOk())
             .andExpect(jsonPath("$.pericias[?(@.nome == 'Olfato')].ganho").value(0))
             .andExpect(jsonPath("$.pericias[?(@.nome == 'Olfato')].ganhoTreino").value(0));
 
@@ -307,7 +307,7 @@ class FichaEventoTest extends FichaTestBase {
         eventos(mesa.jogador1(), mesa, ficha, "?limite=3")
             .andExpect(jsonPath("$", hasSize(3)))
             .andExpect(jsonPath("$[?(@.campo == 'raca')].anterior").value("LOBISOMEM"))
-            .andExpect(jsonPath("$[?(@.campo == 'raca')].novo").value("VAMPIRO"))
+            .andExpect(jsonPath("$[?(@.campo == 'raca')].novo").value("BRUXO"))
             .andExpect(jsonPath("$[?(@.campo == 'pericias.Olfato.ganho')].anterior").value(20))
             .andExpect(jsonPath("$[?(@.campo == 'pericias.Olfato.ganho')].novo").value(0))
             .andExpect(jsonPath("$[?(@.campo == 'pericias.Olfato.ganhoTreino')].anterior").value(3))
