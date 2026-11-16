@@ -231,15 +231,16 @@ class FichaCriacaoTest extends FichaTestBase {
     }
 
     @Test
-    void racaNulaRetorna400() throws Exception {
+    void semRacaConcluiComoHumano() throws Exception {
         Mesa mesa = montarMesa();
         String ficha = JsonPath.read(postFicha(mesa.jogador1(), mesa.campanhaId(), """
                 {"tipo": "PJ", "nome": "Sem Raça"}
                 """).andReturn().getResponse().getContentAsString(), "$.id");
 
         concluir(mesa.jogador1(), mesa, ficha, corpo(base()))
-            .andExpect(status().isBadRequest())
-            .andExpect(content().string(containsString("Defina a raça")));
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.raca").value("HUMANO"))
+            .andExpect(jsonPath("$.estado.criacao.concluida").value(true));
     }
 
     // ---------- Conclusão: permissões e estado (404, 403, 409) ----------

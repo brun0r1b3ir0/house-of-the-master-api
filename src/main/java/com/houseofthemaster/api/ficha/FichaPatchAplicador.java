@@ -52,8 +52,8 @@ public class FichaPatchAplicador {
      * As ops são avaliadas NA ORDEM, com a raça "corrente" do PATCH: raca -> LOBISOMEM seguida de
      * pericias.Olfato.ganho passa. Trocar a raça para outra que não LOBISOMEM acrescenta, logo após a op
      * de raça, a zeragem de ganho e ganhoTreino de Olfato (registrada no log como qualquer alteração).
-     * VAMPIRO é permanente: sair dele (para outra raça ou null) é 400. Entrar nele (transformação) acrescenta,
-     * logo após a op de raça, atributos.FOR = 120 e atributos.DES = 120. Com a raça corrente VAMPIRO,
+     * raca null, "" ou só espaços vale como HUMANO. VAMPIRO é permanente: sair dele (inclusive para
+     * null/"") é 400. Entrar nele (transformação) acrescenta, logo após a op de raça, atributos.FOR = 120 e atributos.DES = 120. Com a raça corrente VAMPIRO,
      * atributos.FOR e atributos.DES só aceitam 120 (no-op); outro valor é 400.
      */
     public List<Alteracao> validar(Ficha ficha, List<OpPatch> ops) {
@@ -72,7 +72,7 @@ public class FichaPatchAplicador {
                 continue;
             }
 
-            Raca nova = alteracao.novo() == null ? null : Raca.valueOf((String) alteracao.novo());
+            Raca nova = Raca.valueOf((String) alteracao.novo());
             if (!RegrasRaca.trocaPermitida(racaCorrente, nova)) {
                 throw new IllegalArgumentException(
                     "ops[" + i + "] (" + op.getCampo() + "): " + RegrasRaca.MENSAGEM_VAMPIRO_PERMANENTE);
@@ -129,9 +129,12 @@ public class FichaPatchAplicador {
                     alvo(Ficha::getOcupacao, (f, v) -> f.setOcupacao((String) v)),
                     texto(valor, true));
             case "raca":
+                // Não existe ficha sem raça: null, "" ou só espaços valem como HUMANO.
                 return new Alteracao(campo,
-                    alvo(f -> nomeOuNull(f.getRaca()), (f, v) -> f.setRaca(v == null ? null : Raca.valueOf((String) v))),
-                    enumeracao(valor, Raca.class, true));
+                    alvo(f -> nomeOuNull(f.getRaca()), (f, v) -> f.setRaca(Raca.valueOf((String) v))),
+                    valor.isNull() || (valor.isString() && valor.stringValue().isBlank())
+                        ? Raca.HUMANO.name()
+                        : enumeracao(valor, Raca.class, false));
             case "estagioSanidade":
                 return new Alteracao(campo,
                     alvoEstado(e -> nomeOuNull(e.getEstagioSanidade()),

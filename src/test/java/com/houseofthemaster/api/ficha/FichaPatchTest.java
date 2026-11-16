@@ -257,7 +257,7 @@ class FichaPatchTest extends FichaTestBase {
                 """)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.estado.atuais.PV").value(999))
-            .andExpect(jsonPath("$.raca").doesNotExist());
+            .andExpect(jsonPath("$.raca").value("HUMANO"));
     }
 
     // ---------- Alcateia, abates, overrides e regenOverrides ----------
@@ -438,12 +438,12 @@ class FichaPatchTest extends FichaTestBase {
             .andExpect(status().isBadRequest())
             .andExpect(content().string(containsString("ops[1]")));
 
-        // só a troca de raça: Olfato vai a 0 na mesma transação
+        // só a troca de raça (null vale como HUMANO): Olfato vai a 0 na mesma transação
         patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
                 {"ops": [{"campo": "raca", "valor": null}]}
                 """)
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.raca").doesNotExist())
+            .andExpect(jsonPath("$.raca").value("HUMANO"))
             .andExpect(jsonPath("$.pericias[?(@.nome == 'Olfato')].ganho").value(0));
     }
 

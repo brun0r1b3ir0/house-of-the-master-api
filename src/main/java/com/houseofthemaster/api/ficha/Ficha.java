@@ -41,7 +41,9 @@ public class Ficha {
 
     private String ocupacao;
 
+    /** Nunca nula: quem não tem raça sobrenatural é HUMANO (default da coluna desde a V4). */
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Raca raca;
 
     @JdbcTypeCode(SqlTypes.JSON)

@@ -61,10 +61,9 @@ public class CriacaoValidador {
         catalogoSistema.pericias().forEach(p -> catalogo.put(p.nome(), p));
     }
 
-    public CriacaoValidada validar(Raca raca, ConcluirCriacaoRequest request) {
-        if (raca == null) {
-            throw erro("Defina a raça da ficha antes de concluir a criação.");
-        }
+    public CriacaoValidada validar(Raca racaDaFicha, ConcluirCriacaoRequest request) {
+        // Não existe ficha sem raça: nula vale como HUMANO.
+        Raca raca = racaDaFicha == null ? Raca.HUMANO : racaDaFicha;
 
         Map<String, Integer> atributos = validarAtributos(request.getAtributos(), raca);
 

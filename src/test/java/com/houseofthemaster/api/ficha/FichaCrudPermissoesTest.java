@@ -2,6 +2,8 @@ package com.houseofthemaster.api.ficha;
 
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -10,9 +12,11 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -94,16 +98,36 @@ class FichaCrudPermissoesTest extends FichaTestBase {
     }
 
     @Test
-    void ocupacaoERacaSaoOpcionais() throws Exception {
+    void ocupacaoERacaSaoOpcionaisESemRacaGravaHumano() throws Exception {
         Mesa mesa = montarMesa();
 
-        postFicha(mesa.jogador1(), mesa.campanhaId(), """
+        String resposta = postFicha(mesa.jogador1(), mesa.campanhaId(), """
                 {"tipo": "PJ", "nome": "Sem Raça"}
                 """)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.ocupacao").doesNotExist())
-            .andExpect(jsonPath("$.raca").doesNotExist())
-            .andExpect(jsonPath("$.pericias", hasSize(71)));
+            .andExpect(jsonPath("$.raca").value("HUMANO"))
+            .andExpect(jsonPath("$.pericias", hasSize(71)))
+            .andReturn().getResponse().getContentAsString();
+
+        getFicha(mesa.jogador1(), mesa.campanhaId(), JsonPath.read(resposta, "$.id"))
+            .andExpect(jsonPath("$.raca").value("HUMANO"));
+    }
+
+    @ParameterizedTest(name = "raca = {0}")
+    @ValueSource(strings = {"null", "\"\"", "\"   \""})
+    void racaNulaOuVaziaNoPostGravaHumano(String raca) throws Exception {
+        Mesa mesa = montarMesa();
+
+        String resposta = postFicha(mesa.jogador1(), mesa.campanhaId(), """
+                {"tipo": "PJ", "nome": "Sem Raça", "raca": %s}
+                """.formatted(raca))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.raca").value("HUMANO"))
+            .andReturn().getResponse().getContentAsString();
+
+        getFicha(mesa.jogador1(), mesa.campanhaId(), JsonPath.read(resposta, "$.id"))
+            .andExpect(jsonPath("$.raca").value("HUMANO"));
     }
 
     @Test
@@ -118,7 +142,8 @@ class FichaCrudPermissoesTest extends FichaTestBase {
             """).andExpect(status().isBadRequest());
         postFicha(mesa.jogador1(), mesa.campanhaId(), """
             {"tipo": "PJ", "nome": "Ezra", "raca": "ELFO"}
-            """).andExpect(status().isBadRequest());
+            """).andExpect(status().isBadRequest())
+            .andExpect(content().string(containsString("raca deve ser um de [HUMANO, CACADOR, BRUXO, VAMPIRO, LOBISOMEM, VIAJANTE].")));
         postFicha(mesa.jogador1(), mesa.campanhaId(), """
             {"tipo": "DEUS", "nome": "Ezra"}
             """).andExpect(status().isBadRequest());

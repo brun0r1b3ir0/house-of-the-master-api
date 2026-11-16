@@ -97,7 +97,6 @@ public abstract class FichaPersistenciaCasos {
         // os demais campos ficam nulos de propósito
         Ficha ficha = novaFicha(estado);
         ficha.setOcupacao(null);
-        ficha.setRaca(null);
         em.persist(ficha);
         em.flush();
         em.clear();
@@ -110,7 +109,6 @@ public abstract class FichaPersistenciaCasos {
         assertThat(lida.getEstado().getEstagioSanidade()).isNull();
         assertThat(lida.getEstado().getAlcateia()).isNull();
         assertThat(lida.getOcupacao()).isNull();
-        assertThat(lida.getRaca()).isNull();
     }
 
     @Test

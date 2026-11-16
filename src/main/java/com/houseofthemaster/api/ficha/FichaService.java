@@ -104,9 +104,10 @@ public class FichaService {
         ficha.setTipo(request.getTipo());
         ficha.setNome(request.getNome());
         ficha.setOcupacao(request.getOcupacao());
-        ficha.setRaca(request.getRaca());
+        // 400 depois de 404/403: só normaliza quando quem cria pode criar.
+        ficha.setRaca(RegrasRaca.normalizar(request.getRaca()));
         ficha.setEstado(FichaDefaults.estadoInicial());
-        if (request.getRaca() == Raca.VAMPIRO) {
+        if (ficha.getRaca() == Raca.VAMPIRO) {
             ficha.getEstado().getAtributos().putAll(RegrasRaca.ATRIBUTOS_FIXOS_VAMPIRO);
         }
         if (request.getTipo() == TipoFicha.PJ) {
@@ -182,6 +183,10 @@ public class FichaService {
             throw new IllegalStateException("Esta ficha não está em criação.");
         }
 
+        // Não existe ficha sem raça: uma ficha antiga ainda sem raça conclui (e fica gravada) como HUMANO.
+        if (ficha.getRaca() == null) {
+            ficha.setRaca(Raca.HUMANO);
+        }
         CriacaoValidador.CriacaoValidada validada = criacaoValidador.validar(ficha.getRaca(), request);
         for (String nome : validada.ganhoPorPericia().keySet()) {
             if (ficha.getPericias().stream().noneMatch(p -> p.getNome().equals(nome))) {

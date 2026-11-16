@@ -46,7 +46,7 @@ class MigrationsPostgresTest extends FichaPersistenciaCasos {
         assertThat(Arrays.stream(aplicadas).allMatch(m -> m.getState().isApplied() && !m.getState().isFailed()))
             .isTrue();
         assertThat(Arrays.stream(aplicadas).map(m -> m.getVersion().getVersion()))
-            .containsExactly("1", "2", "3");
+            .containsExactly("1", "2", "3", "4");
         assertThat(flyway.info().pending()).isEmpty();
     }
 }

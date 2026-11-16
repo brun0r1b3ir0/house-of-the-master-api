@@ -42,7 +42,7 @@
 | tipo | enum `PJ` \| `NPC` | |
 | nome | String | |
 | ocupacao | String | |
-| raca | enum nulo: `HUMANO, CACADOR, BRUXO, VAMPIRO, LOBISOMEM, VIAJANTE` | o campo "Jogador" do mock é derivado de `dono.nome` |
+| raca | enum **não nulo** (default `HUMANO`): `HUMANO, CACADOR, BRUXO, VAMPIRO, LOBISOMEM, VIAJANTE`. Não existe ficha sem raça: quem não tem raça sobrenatural é HUMANO. No POST, `raca` ausente, `null`, `""` ou só espaços grava `HUMANO`; valor inválido é 400 | o campo "Jogador" do mock é derivado de `dono.nome` |
 | estado | JSONB | ver 2.2 |
 | arquivada | boolean | ficha de quem saiu da campanha fica arquivada, não apagada |
 | criadaEm / atualizadaEm | timestamp | |
@@ -205,7 +205,7 @@ PATCH recebe uma lista de operações, cada uma com **campo da lista permitida**
 |---|---|
 | `nome` | texto não vazio, até 120 caracteres |
 | `ocupacao` | texto até 120 caracteres, ou `null` |
-| `raca` | `HUMANO`, `CACADOR`, `BRUXO`, `VAMPIRO`, `LOBISOMEM`, `VIAJANTE` ou `null` |
+| `raca` | `HUMANO`, `CACADOR`, `BRUXO`, `VAMPIRO`, `LOBISOMEM`, `VIAJANTE`; `null`, `""` ou só espaços valem como `HUMANO` |
 | `estagioSanidade` | um dos 8 estágios (`PLENITUDE` … `INFERNO`) |
 | `atributos.<FOR\|CON\|TAM\|DES\|APA\|INT\|POD\|EDU>` | inteiro 0–9999 |
 | `atuais.<PV\|PE\|PM\|SAN\|SRT>` | inteiro 0–9999 (sem validar contra o máximo) |
@@ -229,8 +229,8 @@ PATCH recebe uma lista de operações, cada uma com **campo da lista permitida**
 - Ordem das verificações: participação (404), permissão (403), validação (400).
 - Ops avaliadas NA ORDEM: `raca → LOBISOMEM` seguida de `pericias.Olfato.ganho` passa; a ordem inversa dá 400.
 - Trocar a `raca` para algo diferente de `LOBISOMEM` zera `ganho` e `ganhoTreino` de Olfato na mesma transação (com eventos no log). `ganhoTreino` continua fora da lista do PATCH.
-- `VAMPIRO` é permanente: com a raça corrente `VAMPIRO`, trocar para outra raça ou para `null` dá 400 ("A raça Vampiro é permanente e não pode ser trocada."), inclusive dentro do mesmo PATCH que acabou de transformar. `VAMPIRO → VAMPIRO` não é erro e não muda nada.
-- Transformação (de outra raça ou de `null` para `VAMPIRO`): grava `atributos.FOR = 120` e `atributos.DES = 120` na mesma transação, com eventos no log. Criar a ficha (POST) já como `VAMPIRO` também grava FOR = DES = 120.
+- `VAMPIRO` é permanente: com a raça corrente `VAMPIRO`, trocar para outra raça (inclusive `null`/`""`, que valem como `HUMANO`) dá 400 ("A raça Vampiro é permanente e não pode ser trocada."), inclusive dentro do mesmo PATCH que acabou de transformar. `VAMPIRO → VAMPIRO` não é erro e não muda nada.
+- Transformação (de outra raça para `VAMPIRO`): grava `atributos.FOR = 120` e `atributos.DES = 120` na mesma transação, com eventos no log. Criar a ficha (POST) já como `VAMPIRO` também grava FOR = DES = 120.
 - FOR e DES de vampiro são fixas: com a raça corrente `VAMPIRO`, `atributos.FOR`/`atributos.DES` com valor 120 é no-op (não é erro nem gera evento); qualquer outro valor dá 400 ("FOR e DES de vampiro são fixas em 120 e não podem ser alteradas."), inclusive logo após a transformação no mesmo PATCH. Uma op de FOR/DES ANTES da transformação passa, e a transformação a sobrescreve com 120.
 - Log: só gera evento o campo que de fato mudou; remover uma exceção gera evento com `novo = null`; `null` numa exceção que não existe não muda nada.
 - "Atual ≤ máximo" é clampado no frontend (o máximo depende do cálculo).
@@ -251,7 +251,7 @@ PATCH recebe uma lista de operações, cada uma com **campo da lista permitida**
 Respostas: 200 com a ficha completa (mesmo formato do GET). Erros em texto simples, nesta ordem: 404 (não participante, outro jogador, ficha arquivada ou de outra campanha), 403 (Mestre numa PJ), 409 "Esta ficha não está em criação." (já concluída, NPC, ficha antiga sem `criacao`), 400 (regras).
 
 Regras (o servidor recalcula tudo com os atributos recebidos):
-- 8 atributos, cada um 15–90, soma exatamente 460; a raça da ficha precisa estar definida.
+- 8 atributos, cada um 15–90, soma exatamente 460 (ficha antiga ainda sem raça conclui e fica gravada como HUMANO).
 - **Vampiro:** FOR e DES ficam fora da distribuição e são gravadas em 120. Os outros 6 (CON, TAM, APA, INT, POD, EDU) vão de 15 a 90 e somam exatamente 345 (= 460 − 2 × 57,5). FOR e DES são opcionais no corpo; se vierem, têm de ser 120 (senão 400).
 - `principal` ∈ {FOR, DES, APA, EDU, INT}; `secundario` ∈ {EDU, INT}; iguais (EDU+EDU, INT+INT) valem 4× o atributo.
 - `profissao.pericias`: 7 nomes distintos do catálogo, ao menos 1 INTERPESSOAL.

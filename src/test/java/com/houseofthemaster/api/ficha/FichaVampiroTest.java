@@ -4,6 +4,7 @@ import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -48,19 +49,22 @@ class FichaVampiroTest extends FichaTestBase {
             .andExpect(jsonPath("$.raca").value("VAMPIRO"));
     }
 
-    @Test
-    void vampiroNaoFicaSemRaca() throws Exception {
+    /** null, "" e só espaços valem como HUMANO: para um vampiro é troca, e dá 400. */
+    @ParameterizedTest(name = "raca = {0}")
+    @ValueSource(strings = {"null", "\"\"", "\"   \""})
+    void vampiroNaoFicaSemRaca(String valor) throws Exception {
         Mesa mesa = montarMesa();
         String ficha = fichaVampira(mesa);
 
         patchFicha(mesa.jogador1(), mesa.campanhaId(), ficha, """
-                {"ops": [{"campo": "raca", "valor": null}]}
-                """)
+                {"ops": [{"campo": "atributos.CON", "valor": 70}, {"campo": "raca", "valor": %s}]}
+                """.formatted(valor))
             .andExpect(status().isBadRequest())
-            .andExpect(content().string(containsString(MENSAGEM)));
+            .andExpect(content().string(containsString("ops[1] (raca): " + MENSAGEM)));
 
         getFicha(mesa.jogador1(), mesa.campanhaId(), ficha)
-            .andExpect(jsonPath("$.raca").value("VAMPIRO"));
+            .andExpect(jsonPath("$.raca").value("VAMPIRO"))
+            .andExpect(jsonPath("$.estado.atributos.CON").value(50));
     }
 
     @Test

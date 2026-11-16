@@ -6,6 +6,8 @@ import com.houseofthemaster.api.usuario.UsuarioRepository;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -92,6 +94,38 @@ class FichaEventoTest extends FichaTestBase {
             .andExpect(jsonPath("$.criadaEm").value("2026-10-16T12:00:00Z"));
     }
 
+    @ParameterizedTest(name = "raca = {0}")
+    @ValueSource(strings = {"null", "\"\"", "\"   \""})
+    void racaNulaOuVaziaEmHumanoContinuaHumanoSemEvento(String valor) throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+
+        patch(mesa.jogador1(), mesa, ficha, "raca", valor)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.raca").value("HUMANO"));
+
+        getFicha(mesa.jogador1(), mesa.campanhaId(), ficha).andExpect(jsonPath("$.raca").value("HUMANO"));
+        eventos(mesa.jogador1(), mesa, ficha, "").andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void racaNulaEmBruxoViraHumanoComEvento() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFicha(mesa.jogador1(), mesa.campanhaId(), TipoFicha.PJ, "Ezra");
+        patch(mesa.jogador1(), mesa, ficha, "raca", "\"BRUXO\"").andExpect(status().isOk());
+        relogio.avancar(Duration.ofSeconds(1));
+
+        patch(mesa.jogador1(), mesa, ficha, "raca", "null")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.raca").value("HUMANO"));
+
+        eventos(mesa.jogador1(), mesa, ficha, "")
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].campo").value("raca"))
+            .andExpect(jsonPath("$[0].anterior").value("BRUXO"))
+            .andExpect(jsonPath("$[0].novo").value("HUMANO"));
+    }
+
     @Test
     void campoDoEventoEhOCaminhoCompletoDaOp() throws Exception {
         Mesa mesa = montarMesa();
@@ -99,13 +133,13 @@ class FichaEventoTest extends FichaTestBase {
 
         patch(mesa.jogador1(), mesa, ficha, "pericias.Furtividade.ganho", "20").andExpect(status().isOk());
         relogio.avancar(Duration.ofSeconds(1));
-        patch(mesa.jogador1(), mesa, ficha, "raca", "null").andExpect(status().isOk());
+        patch(mesa.jogador1(), mesa, ficha, "raca", "\"BRUXO\"").andExpect(status().isOk());
 
         eventos(mesa.jogador1(), mesa, ficha, "")
             .andExpect(jsonPath("$", hasSize(2)))
             .andExpect(jsonPath("$[0].campo").value("raca"))
             .andExpect(jsonPath("$[0].anterior").value("HUMANO"))
-            .andExpect(jsonPath("$[0].novo").doesNotExist())
+            .andExpect(jsonPath("$[0].novo").value("BRUXO"))
             .andExpect(jsonPath("$[1].campo").value("pericias.Furtividade.ganho"))
             .andExpect(jsonPath("$[1].anterior").value(0))
             .andExpect(jsonPath("$[1].novo").value(20));

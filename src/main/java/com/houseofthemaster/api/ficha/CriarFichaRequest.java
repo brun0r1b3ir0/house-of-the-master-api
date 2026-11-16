@@ -20,5 +20,6 @@ public class CriarFichaRequest {
     @Size(max = FichaLimites.TEXTO_MAXIMO, message = "Ocupação deve ter no máximo {max} caracteres")
     private String ocupacao;
 
-    private Raca raca;
+    /** Texto, para aceitar "" sem erro do Jackson: nulo, vazio ou só espaços viram HUMANO (RegrasRaca.normalizar). */
+    private String raca;
 }

@@ -1,5 +1,6 @@
 package com.houseofthemaster.api.ficha;
 
+import java.util.Arrays;
 import java.util.Map;
 
 /** Regras de raça do War If usadas na criação, no POST e no PATCH de ficha. */
@@ -24,7 +25,7 @@ public final class RegrasRaca {
     private RegrasRaca() {
     }
 
-    /** Vampiro é permanente: não troca para outra raça nem para null. VAMPIRO -> VAMPIRO não é troca. */
+    /** Vampiro é permanente: não troca para outra raça (null/"" chegam aqui como HUMANO). VAMPIRO -> VAMPIRO não é troca. */
     public static boolean trocaPermitida(Raca atual, Raca nova) {
         return atual != Raca.VAMPIRO || nova == Raca.VAMPIRO;
     }
@@ -32,6 +33,21 @@ public final class RegrasRaca {
     /** A troca é a transformação em Vampiro? */
     public static boolean transformaEmVampiro(Raca atual, Raca nova) {
         return atual != Raca.VAMPIRO && nova == Raca.VAMPIRO;
+    }
+
+    /**
+     * Não existe ficha sem raça: nulo, vazio ou só espaços viram HUMANO. Um nome válido vira a raça;
+     * qualquer outro texto lança IllegalArgumentException (400).
+     */
+    public static Raca normalizar(String raca) {
+        if (raca == null || raca.isBlank()) {
+            return Raca.HUMANO;
+        }
+        try {
+            return Raca.valueOf(raca);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("raca deve ser um de " + Arrays.toString(Raca.values()) + ".");
+        }
     }
 
     /** Valor fixo do atributo para a raça, ou null se o atributo é livre (FOR/DES do Vampiro são fixos). */
