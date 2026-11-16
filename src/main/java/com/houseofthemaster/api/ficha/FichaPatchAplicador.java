@@ -53,7 +53,8 @@ public class FichaPatchAplicador {
      * pericias.Olfato.ganho passa. Trocar a raça para outra que não LOBISOMEM acrescenta, logo após a op
      * de raça, a zeragem de ganho e ganhoTreino de Olfato (registrada no log como qualquer alteração).
      * VAMPIRO é permanente: sair dele (para outra raça ou null) é 400. Entrar nele (transformação) acrescenta,
-     * logo após a op de raça, atributos.FOR = 120 e atributos.DES = 120.
+     * logo após a op de raça, atributos.FOR = 120 e atributos.DES = 120. Com a raça corrente VAMPIRO,
+     * atributos.FOR e atributos.DES só aceitam 120 (no-op); outro valor é 400.
      */
     public List<Alteracao> validar(Ficha ficha, List<OpPatch> ops) {
         List<Alteracao> alteracoes = new ArrayList<>();
@@ -91,10 +92,10 @@ public class FichaPatchAplicador {
     /** Na transformação em Vampiro, FOR e DES passam a 120 (em estado.atributos, com eventos no log). */
     private static List<Alteracao> transformarEmVampiro() {
         return FichaEstado.ATRIBUTOS.stream()
-            .filter(RegrasRaca.ATRIBUTOS_DA_TRANSFORMACAO_VAMPIRO::containsKey)
+            .filter(RegrasRaca.ATRIBUTOS_FIXOS_VAMPIRO::containsKey)
             .map(chave -> new Alteracao("atributos." + chave,
                 alvoMapa(FichaEstado::getAtributos, FichaEstado::setAtributos, chave),
-                RegrasRaca.ATRIBUTOS_DA_TRANSFORMACAO_VAMPIRO.get(chave)))
+                RegrasRaca.ATRIBUTOS_FIXOS_VAMPIRO.get(chave)))
             .toList();
     }
 
@@ -149,9 +150,7 @@ public class FichaPatchAplicador {
         String chave = ponto < 0 ? "" : campo.substring(ponto + 1);
 
         return switch (grupo) {
-            case "atributos" -> new Alteracao(campo,
-                alvoMapa(FichaEstado::getAtributos, FichaEstado::setAtributos, chaveConhecida(chave, FichaEstado.ATRIBUTOS)),
-                inteiro(valor, FichaLimites.VALOR_MAXIMO));
+            case "atributos" -> validarAtributo(campo, chave, valor, racaCorrente);
             case "atuais" -> new Alteracao(campo,
                 alvoMapa(FichaEstado::getAtuais, FichaEstado::setAtuais, chaveConhecida(chave, FichaEstado.ATUAIS)),
                 inteiro(valor, FichaLimites.VALOR_MAXIMO));
@@ -179,6 +178,17 @@ public class FichaPatchAplicador {
             case "pericias" -> validarPericia(ficha, campo, valor, racaCorrente);
             default -> throw naoPermitido();
         };
+    }
+
+    /** FOR/DES de Vampiro (raça corrente do PATCH) são fixas: só 120 é aceito, e não muda nada. */
+    private static Alteracao validarAtributo(String campo, String chave, JsonNode valor, Raca racaCorrente) {
+        chaveConhecida(chave, FichaEstado.ATRIBUTOS);
+        Integer numero = inteiro(valor, FichaLimites.VALOR_MAXIMO);
+        Integer fixo = RegrasRaca.atributoFixo(racaCorrente, chave);
+        if (fixo != null && !fixo.equals(numero)) {
+            throw new IllegalArgumentException(RegrasRaca.MENSAGEM_FOR_DES_VAMPIRO);
+        }
+        return new Alteracao(campo, alvoMapa(FichaEstado::getAtributos, FichaEstado::setAtributos, chave), numero);
     }
 
     private static Alteracao validarAlcateia(String campo, String chave, JsonNode valor) {

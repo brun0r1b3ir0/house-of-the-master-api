@@ -18,6 +18,9 @@ import java.util.Map;
  *
  * Os orçamentos e os valores iniciais (inclusive as fórmulas Esquivar = DES/2 e Língua Nativa = EDU)
  * são calculados aqui, com os atributos recebidos; números do cliente não são usados.
+ *
+ * VAMPIRO: FOR e DES são fixas em 120 e ficam fora da distribuição (os outros 6 somam 345); no
+ * orçamento de profissão elas valem 57,5; a Esquivar começa em 60, sem depender da DES.
  */
 @Component
 public class CriacaoValidador {
@@ -26,6 +29,14 @@ public class CriacaoValidador {
     static final int ATRIBUTO_MINIMO = 15;
     static final int ATRIBUTO_MAXIMO = 90;
     static final int SOMA_ATRIBUTOS = 460;
+    /** Vampiro: soma dos 6 atributos distribuídos (sem FOR e DES) = 460 - 2 x 57,5. */
+    static final int SOMA_ATRIBUTOS_VAMPIRO = 345;
+    /**
+     * Quanto FOR e DES do Vampiro valem no orçamento de profissão (no lugar dos 120 gravados). É a média
+     * que o Vampiro "deixa de distribuir" nesses dois atributos: 460 - 345 = 115 = 2 x 57,5. Assim, principal
+     * FOR ou DES rende 57,5 x 2 = 115 pontos, e não 240, o que deixaria o Vampiro com orçamento inflado.
+     */
+    static final double FOR_DES_VAMPIRO_NO_ORCAMENTO = 57.5;
     static final int PERICIAS_DA_PROFISSAO = 7;
     static final int VALOR_FINAL_MAXIMO = 80;
     static final List<String> ATRIBUTOS_PRINCIPAIS = List.of("FOR", "DES", "APA", "EDU", "INT");
@@ -55,7 +66,7 @@ public class CriacaoValidador {
             throw erro("Defina a raça da ficha antes de concluir a criação.");
         }
 
-        Map<String, Integer> atributos = validarAtributos(request.getAtributos());
+        Map<String, Integer> atributos = validarAtributos(request.getAtributos(), raca);
 
         ConcluirCriacaoRequest.Profissao profissao = request.getProfissao();
         if (profissao == null) {
@@ -86,7 +97,7 @@ public class CriacaoValidador {
         ganhosInteresse.forEach((nome, pts) -> ganhoPorPericia.merge(nome, pts, Integer::sum));
         Map<String, Integer> valorFinal = new HashMap<>();
         for (PericiaCatalogo pericia : catalogo.values()) {
-            int inicial = valorInicial(pericia.valorInicial(), atributos);
+            int inicial = valorInicial(pericia.valorInicial(), atributos, raca);
             int pontos = ganhoPorPericia.getOrDefault(pericia.nome(), 0);
             if (pontos > 0 && inicial + pontos > VALOR_FINAL_MAXIMO) {
                 throw erro(pericia.nome() + ": valor final " + (inicial + pontos) + " passa de " + VALOR_FINAL_MAXIMO
@@ -96,7 +107,9 @@ public class CriacaoValidador {
         }
 
         // Orçamentos (calculados aqui, com os atributos recebidos).
-        int orcamentoProfissao = atributos.get(profissao.getPrincipal()) * 2 + atributos.get(profissao.getSecundario()) * 2;
+        // Exato: os valores são inteiros ou 57,5, e cada um é multiplicado por 2.
+        int orcamentoProfissao = (int) (valorNoOrcamento(profissao.getPrincipal(), atributos, raca) * 2
+            + valorNoOrcamento(profissao.getSecundario(), atributos, raca) * 2);
         int orcamentoInteresse = atributos.get("INT") * 2;
         int gastoProfissao = soma(ganhosProfissao);
         int gastoInteresse = soma(ganhosInteresse);
@@ -122,14 +135,35 @@ public class CriacaoValidador {
 
     // ---------- Partes ----------
 
-    private static Map<String, Integer> validarAtributos(Map<String, JsonNode> recebidos) {
-        if (recebidos == null || !recebidos.keySet().equals(new HashSet<>(FichaEstado.ATRIBUTOS))) {
-            throw erro("Informe exatamente os 8 atributos: " + String.join(", ", FichaEstado.ATRIBUTOS) + ".");
+    /**
+     * Os 8 atributos de 15 a 90 com soma 460. VAMPIRO: só os outros 6 (sem FOR e DES), de 15 a 90 com soma
+     * 345; FOR e DES são opcionais no corpo e, se vierem, têm de ser 120. Devolve os 8, com FOR = DES = 120
+     * no Vampiro.
+     */
+    private static Map<String, Integer> validarAtributos(Map<String, JsonNode> recebidos, Raca raca) {
+        List<String> distribuidos = FichaEstado.ATRIBUTOS.stream()
+            .filter(chave -> RegrasRaca.atributoFixo(raca, chave) == null)
+            .toList();
+        boolean vampiro = distribuidos.size() < FichaEstado.ATRIBUTOS.size();
+        if (recebidos == null || !FichaEstado.ATRIBUTOS.containsAll(recebidos.keySet())
+                || !recebidos.keySet().containsAll(distribuidos)) {
+            throw erro(vampiro
+                ? "Informe os 6 atributos do Vampiro: " + String.join(", ", distribuidos)
+                    + " (FOR e DES são fixas em " + RegrasRaca.FOR_DES_VAMPIRO + ")."
+                : "Informe exatamente os 8 atributos: " + String.join(", ", FichaEstado.ATRIBUTOS) + ".");
         }
         Map<String, Integer> atributos = new LinkedHashMap<>();
         int soma = 0;
         for (String chave : FichaEstado.ATRIBUTOS) {
+            Integer fixo = RegrasRaca.atributoFixo(raca, chave);
             JsonNode valor = recebidos.get(chave);
+            if (fixo != null) {
+                if (valor != null && !(valor.isIntegralNumber() && valor.canConvertToInt() && valor.intValue() == fixo)) {
+                    throw erro("atributos." + chave + ": " + RegrasRaca.MENSAGEM_FOR_DES_VAMPIRO);
+                }
+                atributos.put(chave, fixo);
+                continue;
+            }
             if (valor == null || !valor.isIntegralNumber() || !valor.canConvertToInt()) {
                 throw erro("atributos." + chave + " deve ser um número inteiro.");
             }
@@ -141,10 +175,19 @@ public class CriacaoValidador {
             atributos.put(chave, numero);
             soma += numero;
         }
-        if (soma != SOMA_ATRIBUTOS) {
-            throw erro("A soma dos 8 atributos deve ser exatamente " + SOMA_ATRIBUTOS + " (recebido: " + soma + ").");
+        int somaExigida = vampiro ? SOMA_ATRIBUTOS_VAMPIRO : SOMA_ATRIBUTOS;
+        if (soma != somaExigida) {
+            throw erro(vampiro
+                ? "A soma dos 6 atributos do Vampiro (" + String.join(", ", distribuidos) + ") deve ser exatamente "
+                    + somaExigida + " (recebido: " + soma + ")."
+                : "A soma dos 8 atributos deve ser exatamente " + somaExigida + " (recebido: " + soma + ").");
         }
         return atributos;
+    }
+
+    /** Valor do atributo no orçamento de profissão: o gravado, exceto FOR/DES do Vampiro (57,5). */
+    private static double valorNoOrcamento(String atributo, Map<String, Integer> atributos, Raca raca) {
+        return RegrasRaca.atributoFixo(raca, atributo) != null ? FOR_DES_VAMPIRO_NO_ORCAMENTO : atributos.get(atributo);
     }
 
     private List<String> validarPericiasDaProfissao(List<String> nomes, Raca raca) {
@@ -225,13 +268,16 @@ public class CriacaoValidador {
         }
     }
 
-    /** Valor inicial com os atributos DIGITADOS (Esquivar = DES/2 arredondado para baixo; Língua Nativa = EDU). */
-    static int valorInicial(ValorInicial valorInicial, Map<String, Integer> atributos) {
+    /**
+     * Valor inicial com os atributos DIGITADOS (Esquivar = DES/2 arredondado para baixo; Língua Nativa = EDU).
+     * Vampiro: Esquivar cravada em 60 (RegrasRaca.ESQUIVAR_INICIAL_VAMPIRO), sem depender da DES.
+     */
+    static int valorInicial(ValorInicial valorInicial, Map<String, Integer> atributos, Raca raca) {
         if (valorInicial.fixo() != null) {
             return valorInicial.fixo();
         }
         return switch (valorInicial.formula()) {
-            case DES_METADE -> atributos.get("DES") / 2;
+            case DES_METADE -> raca == Raca.VAMPIRO ? RegrasRaca.ESQUIVAR_INICIAL_VAMPIRO : atributos.get("DES") / 2;
             case EDU -> atributos.get("EDU");
         };
     }

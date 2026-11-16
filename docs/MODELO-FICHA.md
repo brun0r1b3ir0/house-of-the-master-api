@@ -25,7 +25,7 @@
 | 15 | **Esquivar** e **Língua Nativa** acompanham DES e EDU ao vivo. Por isso a ficha guarda o *ganho* acima do inicial em todas as perícias. |
 | 16 | **Primórdios** é perícia sem categoria (`DESCONHECIDA`). **Lidar com Animais** é o nome oficial da perícia (o +20 do Lobisomem vale para ela). **Olfato** é exclusiva do Lobisomem. Atletismo e Investigar não existem. |
 | 17 | **Perícia mágica** = a raça dá bônus nela. Não é guardada, é calculada. |
-| 18 | **Esquivar** usa a DES **digitada** (não a efetiva). |
+| 18 | **Esquivar** usa a DES **digitada** (não a efetiva). Exceção: no **Vampiro** o valor inicial é cravado em **60** (= 120/2) e não acompanha a DES, porque FOR/DES do vampiro vão subir com a idade e a Esquivar não pode subir junto. |
 | 19 | **EH** conta as perícias pelo valor digitado, inclusive as mágicas (o bônus da raça não entra no valor digitado). |
 
 ---
@@ -230,7 +230,8 @@ PATCH recebe uma lista de operações, cada uma com **campo da lista permitida**
 - Ops avaliadas NA ORDEM: `raca → LOBISOMEM` seguida de `pericias.Olfato.ganho` passa; a ordem inversa dá 400.
 - Trocar a `raca` para algo diferente de `LOBISOMEM` zera `ganho` e `ganhoTreino` de Olfato na mesma transação (com eventos no log). `ganhoTreino` continua fora da lista do PATCH.
 - `VAMPIRO` é permanente: com a raça corrente `VAMPIRO`, trocar para outra raça ou para `null` dá 400 ("A raça Vampiro é permanente e não pode ser trocada."), inclusive dentro do mesmo PATCH que acabou de transformar. `VAMPIRO → VAMPIRO` não é erro e não muda nada.
-- Transformação (de outra raça ou de `null` para `VAMPIRO`): grava `atributos.FOR = 120` e `atributos.DES = 120` na mesma transação, com eventos no log. Só o PATCH transforma; criar a ficha já como `VAMPIRO` não grava os 120.
+- Transformação (de outra raça ou de `null` para `VAMPIRO`): grava `atributos.FOR = 120` e `atributos.DES = 120` na mesma transação, com eventos no log. Criar a ficha (POST) já como `VAMPIRO` também grava FOR = DES = 120.
+- FOR e DES de vampiro são fixas: com a raça corrente `VAMPIRO`, `atributos.FOR`/`atributos.DES` com valor 120 é no-op (não é erro nem gera evento); qualquer outro valor dá 400 ("FOR e DES de vampiro são fixas em 120 e não podem ser alteradas."), inclusive logo após a transformação no mesmo PATCH. Uma op de FOR/DES ANTES da transformação passa, e a transformação a sobrescreve com 120.
 - Log: só gera evento o campo que de fato mudou; remover uma exceção gera evento com `novo = null`; `null` numa exceção que não existe não muda nada.
 - "Atual ≤ máximo" é clampado no frontend (o máximo depende do cálculo).
 - Como só o dono escreve em PJ, não há disputa de edição; sem controle de versão por enquanto (última escrita vence).
@@ -251,12 +252,13 @@ Respostas: 200 com a ficha completa (mesmo formato do GET). Erros em texto simpl
 
 Regras (o servidor recalcula tudo com os atributos recebidos):
 - 8 atributos, cada um 15–90, soma exatamente 460; a raça da ficha precisa estar definida.
+- **Vampiro:** FOR e DES ficam fora da distribuição e são gravadas em 120. Os outros 6 (CON, TAM, APA, INT, POD, EDU) vão de 15 a 90 e somam exatamente 345 (= 460 − 2 × 57,5). FOR e DES são opcionais no corpo; se vierem, têm de ser 120 (senão 400).
 - `principal` ∈ {FOR, DES, APA, EDU, INT}; `secundario` ∈ {EDU, INT}; iguais (EDU+EDU, INT+INT) valem 4× o atributo.
 - `profissao.pericias`: 7 nomes distintos do catálogo, ao menos 1 INTERPESSOAL.
 - Primórdios nunca recebe pontos na criação (nem entre as 7, nem em `ganhos`); Olfato só para LOBISOMEM.
 - `ganhos.profissao` só nas 7; `ganhos.interesse` em qualquer perícia permitida à raça; pontos inteiros de 1 a 80.
-- Valor final = valorInicial (Esquivar = ⌊DES/2⌋, Língua Nativa = EDU, com os atributos digitados) + pontos ≤ 80, para cada perícia que recebe pontos.
-- Orçamentos: profissão = 2×principal + 2×secundario; interesse = 2×INT. Gasto ≤ orçamento. Sobra só é aceita quando o teto de 80 impede de colocar o resto em qualquer perícia elegível; senão, 400 "Faltam gastar N pontos de …".
+- Valor final = valorInicial (Esquivar = ⌊DES/2⌋, ou 60 no Vampiro; Língua Nativa = EDU, com os atributos digitados) + pontos ≤ 80, para cada perícia que recebe pontos.
+- Orçamentos: profissão = 2×principal + 2×secundario; interesse = 2×INT. No Vampiro, FOR e DES valem 57,5 no orçamento de profissão (não 120): principal FOR ou DES rende 115. Gasto ≤ orçamento. Sobra só é aceita quando o teto de 80 impede de colocar o resto em qualquer perícia elegível; senão, 400 "Faltam gastar N pontos de …".
 
 Efeito (uma transação): grava os 8 atributos; o `ganho` de cada perícia passa a ser profissão + interesse (as demais voltam a 0; ganhos anteriores são substituídos); `estado.criacao` vira concluída (formato em 2.2); um único evento `criacao.concluida` no log.
 

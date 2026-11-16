@@ -106,6 +106,9 @@ public class FichaService {
         ficha.setOcupacao(request.getOcupacao());
         ficha.setRaca(request.getRaca());
         ficha.setEstado(FichaDefaults.estadoInicial());
+        if (request.getRaca() == Raca.VAMPIRO) {
+            ficha.getEstado().getAtributos().putAll(RegrasRaca.ATRIBUTOS_FIXOS_VAMPIRO);
+        }
         if (request.getTipo() == TipoFicha.PJ) {
             ficha.getEstado().setCriacao(FichaDefaults.criacaoPendente());
         }

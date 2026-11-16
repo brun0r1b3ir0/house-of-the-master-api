@@ -292,6 +292,117 @@ class FichaCriacaoTest extends FichaTestBase {
 
     // ---------- Corpo base válido e auxiliares ----------
 
+    // ---------- Vampiro: FOR/DES fixas em 120, os outros 6 somam 345 ----------
+
+    @Test
+    void vampiroConcluiCom6AtributosEGravaForEDes120() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFichaComRaca(mesa.jogador1(), mesa, "VAMPIRO");
+
+        concluir(mesa.jogador1(), mesa, ficha, corpo(baseVampiro()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.estado.atributos.FOR").value(120))
+            .andExpect(jsonPath("$.estado.atributos.DES").value(120))
+            .andExpect(jsonPath("$.estado.atributos.CON").value(50))
+            .andExpect(jsonPath("$.estado.atributos.INT").value(70))
+            .andExpect(jsonPath("$.estado.atributos.EDU").value(60))
+            .andExpect(jsonPath("$.estado.criacao.snapshot.atributos.FOR").value(120))
+            .andExpect(jsonPath("$.estado.criacao.snapshot.atributos.DES").value(120))
+            .andExpect(jsonPath("$.pericias[?(@.nome == 'Esquivar')].ganho").value(20))
+            .andExpect(jsonPath("$.estado.criacao.concluida").value(true));
+
+        getFicha(mesa.jogador1(), mesa.campanhaId(), ficha)
+            .andExpect(jsonPath("$.estado.atributos.FOR").value(120))
+            .andExpect(jsonPath("$.estado.atributos.DES").value(120));
+    }
+
+    @Test
+    void vampiroAceitaForEDesNoCorpoSeForem120() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFichaComRaca(mesa.jogador1(), mesa, "VAMPIRO");
+        Map<String, Object> corpo = baseVampiro();
+        atributosDe(corpo).put("FOR", 120);
+        atributosDe(corpo).put("DES", 120);
+
+        concluir(mesa.jogador1(), mesa, ficha, corpo(corpo))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.estado.atributos.FOR").value(120))
+            .andExpect(jsonPath("$.estado.atributos.DES").value(120));
+    }
+
+    static Stream<Arguments> vampiroInvalido() {
+        return Stream.of(
+            caso("soma dos 6 = 344", c -> atributosDe(c).put("POD", 54),
+                "A soma dos 6 atributos do Vampiro (CON, TAM, APA, INT, POD, EDU) deve ser exatamente 345 (recebido: 344)."),
+            caso("soma dos 6 = 346", c -> atributosDe(c).put("POD", 56),
+                "A soma dos 6 atributos do Vampiro (CON, TAM, APA, INT, POD, EDU) deve ser exatamente 345 (recebido: 346)."),
+            caso("atributo fora de 15-90", c -> {
+                atributosDe(c).put("CON", 91);
+                atributosDe(c).put("POD", 14);
+            }, "atributos.CON deve estar entre 15 e 90 (recebido: 91)."),
+            caso("falta um dos 6", c -> atributosDe(c).remove("APA"),
+                "Informe os 6 atributos do Vampiro: CON, TAM, APA, INT, POD, EDU (FOR e DES são fixas em 120)."),
+            caso("FOR diferente de 120", c -> atributosDe(c).put("FOR", 90),
+                "atributos.FOR: FOR e DES de vampiro são fixas em 120 e não podem ser alteradas."),
+            caso("DES diferente de 120", c -> atributosDe(c).put("DES", 50),
+                "atributos.DES: FOR e DES de vampiro são fixas em 120 e não podem ser alteradas."),
+            caso("os 8 atributos de humano (soma 460)", c -> c.put("atributos", atributos(50, 50, 60, 70, 50, 70, 50, 60)),
+                "atributos.FOR: FOR e DES de vampiro são fixas em 120 e não podem ser alteradas."),
+            // Esquivar começa em 60 (não DES/2 com a DES digitada): 60 + 21 passa do teto
+            caso("Esquivar 60 + 21", c -> {
+                profissaoGanhos(c).put("Esquivar", 21);
+                profissaoGanhos(c).put("Lábia", 74);
+            }, "Esquivar: valor final 81 passa de 80 (inicial 60 + 21 pontos)."),
+            // FOR/DES valem 57,5 no orçamento: DES + EDU = 115 + 120 = 235, não 240 + 120
+            caso("profissão acima de 235", c -> profissaoGanhos(c).put("Encontrar", 1),
+                "ganhos.profissao: 236 pontos gastos, mas o orçamento de profissão é 235.")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("vampiroInvalido")
+    void vampiroInvalidoRetorna400ENadaMuda(String descricao, Consumer<Map<String, Object>> alterar, String mensagem)
+            throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFichaComRaca(mesa.jogador1(), mesa, "VAMPIRO");
+        Map<String, Object> corpo = baseVampiro();
+        alterar.accept(corpo);
+
+        concluir(mesa.jogador1(), mesa, ficha, corpo(corpo))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(containsString(mensagem)));
+
+        getFicha(mesa.jogador1(), mesa.campanhaId(), ficha)
+            .andExpect(jsonPath("$.estado.criacao.concluida").value(false))
+            .andExpect(jsonPath("$.estado.atributos.FOR").value(120))
+            .andExpect(jsonPath("$.estado.atributos.DES").value(120));
+    }
+
+    @Test
+    void vampiroComPrincipalForTemOrcamentoDe115MaisSecundario() throws Exception {
+        Mesa mesa = montarMesa();
+        String ficha = criarFichaComRaca(mesa.jogador1(), mesa, "VAMPIRO");
+        Map<String, Object> corpo = baseVampiro();
+        // FOR (57,5 x 2 = 115) + EDU (60 x 2 = 120) = 235: o mesmo orçamento de DES + EDU
+        profissao(corpo).put("principal", "FOR");
+
+        concluir(mesa.jogador1(), mesa, ficha, corpo(corpo))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.estado.criacao.profissaoAtributos[0]").value("FOR"));
+    }
+
+    /**
+     * VAMPIRO; CON 50, TAM 60, APA 50, INT 70, POD 55, EDU 60 (soma 345), sem FOR e DES no corpo.
+     * Profissão DES+EDU = 115 + 120 = 235: Furtividade, Esquivar (inicial 60), Charme e Lábia vão a 80;
+     * Escutar +15. Interesse INT*2 = 140: Escutar +20, Medicina +50, Ocultismo +70. Tudo gasto.
+     */
+    private static Map<String, Object> baseVampiro() {
+        Map<String, Object> corpo = base();
+        corpo.put("atributos", mapa("CON", 50, "TAM", 60, "APA", 50, "INT", 70, "POD", 55, "EDU", 60));
+        profissaoGanhos(corpo).put("Esquivar", 20);
+        return corpo;
+    }
+
     /**
      * HUMANO; DES 70, INT 70, EDU 60 (soma 460). Profissão DES+EDU = 260 pontos, interesse INT*2 = 140.
      * Profissão: Furtividade, Esquivar, Charme e Lábia vão a 80; Escutar +15. Interesse: Escutar +20,

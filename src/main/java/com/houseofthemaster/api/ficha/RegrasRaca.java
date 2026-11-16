@@ -2,13 +2,24 @@ package com.houseofthemaster.api.ficha;
 
 import java.util.Map;
 
-/** Regras de raça do War If usadas no PATCH de ficha. */
+/** Regras de raça do War If usadas na criação, no POST e no PATCH de ficha. */
 public final class RegrasRaca {
 
     public static final String MENSAGEM_VAMPIRO_PERMANENTE = "A raça Vampiro é permanente e não pode ser trocada.";
 
-    /** Atributos gravados na transformação em Vampiro (troca de outra raça, ou de sem raça, para VAMPIRO). */
-    public static final Map<String, Integer> ATRIBUTOS_DA_TRANSFORMACAO_VAMPIRO = Map.of("FOR", 120, "DES", 120);
+    public static final String MENSAGEM_FOR_DES_VAMPIRO = "FOR e DES de vampiro são fixas em 120 e não podem ser alteradas.";
+
+    /** FOR e DES de toda ficha VAMPIRO (gravados no POST, na transformação e na conclusão da criação). */
+    public static final int FOR_DES_VAMPIRO = 120;
+
+    /** Atributos fixos do Vampiro: FOR = 120 e DES = 120. */
+    public static final Map<String, Integer> ATRIBUTOS_FIXOS_VAMPIRO = Map.of("FOR", FOR_DES_VAMPIRO, "DES", FOR_DES_VAMPIRO);
+
+    /**
+     * Valor inicial (base) da Esquivar do Vampiro: 60 (= 120 / 2), CRAVADO. Não é calculado a partir da DES
+     * de propósito: no futuro FOR/DES do vampiro sobem com a idade, e a Esquivar não pode subir junto.
+     */
+    public static final int ESQUIVAR_INICIAL_VAMPIRO = 60;
 
     private RegrasRaca() {
     }
@@ -21,5 +32,10 @@ public final class RegrasRaca {
     /** A troca é a transformação em Vampiro? */
     public static boolean transformaEmVampiro(Raca atual, Raca nova) {
         return atual != Raca.VAMPIRO && nova == Raca.VAMPIRO;
+    }
+
+    /** Valor fixo do atributo para a raça, ou null se o atributo é livre (FOR/DES do Vampiro são fixos). */
+    public static Integer atributoFixo(Raca raca, String atributo) {
+        return raca == Raca.VAMPIRO ? ATRIBUTOS_FIXOS_VAMPIRO.get(atributo) : null;
     }
 }

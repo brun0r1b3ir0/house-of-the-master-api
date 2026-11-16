@@ -72,7 +72,9 @@ class FichaCrudPermissoesTest extends FichaTestBase {
             .andExpect(jsonPath("$.raca").value("VAMPIRO"))
             .andExpect(jsonPath("$.donoNome").value("Ana"))
             .andExpect(jsonPath("$.criadaEm").value(notNullValue()))
-            .andExpect(jsonPath("$.estado.atributos.FOR").value(50))
+            // VAMPIRO: FOR e DES fixas em 120; os demais começam em 50
+            .andExpect(jsonPath("$.estado.atributos.FOR").value(120))
+            .andExpect(jsonPath("$.estado.atributos.DES").value(120))
             .andExpect(jsonPath("$.estado.atributos.EDU").value(50))
             .andExpect(jsonPath("$.estado.atuais.PV").value(10))
             .andExpect(jsonPath("$.estado.atuais.SAN").value(100))
